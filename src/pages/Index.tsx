@@ -1,4 +1,5 @@
 import { CheckCircle, Clock, Star, TrendingUp, Package, Wrench, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 import Header from "@/components/Layout/Header";
 import BottomNav from "@/components/Layout/BottomNav";
 import StatsCard from "@/components/Dashboard/StatsCard";
@@ -53,29 +54,29 @@ const Index = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
+          <Link to="/delivery-install" className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
             <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center mx-auto mb-3">
               <Package className="h-6 w-6 text-blue-600" />
             </div>
             <h3 className="font-semibold text-sm mb-1">Giao hàng</h3>
             <p className="text-xs text-muted-foreground">& Lắp đặt</p>
-          </div>
+          </Link>
           
-          <div className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
+          <Link to="/maintenance" className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
             <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center mx-auto mb-3">
               <Wrench className="h-6 w-6 text-orange-600" />
             </div>
             <h3 className="font-semibold text-sm mb-1">Bảo hành</h3>
             <p className="text-xs text-muted-foreground">& Sửa chữa</p>
-          </div>
+          </Link>
           
-          <div className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
+          <Link to="/sales" className="bg-card rounded-lg p-4 text-center shadow-card hover:shadow-elevated transition-all duration-300 cursor-pointer">
             <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center mx-auto mb-3">
               <Users className="h-6 w-6 text-green-600" />
             </div>
             <h3 className="font-semibold text-sm mb-1">Hỗ trợ</h3>
             <p className="text-xs text-muted-foreground">Kinh doanh</p>
-          </div>
+          </Link>
         </div>
 
         {/* Ticket List */}
