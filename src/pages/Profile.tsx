@@ -1,57 +1,25 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Header from "@/components/Layout/Header";
 import BottomNav from "@/components/Layout/BottomNav";
 import { User, Lock, Mail, Phone, MapPin, Calendar, Award } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { getAuthUser, logout } from "@/lib/api";
 
 const Profile = () => {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (newPassword !== confirmPassword) {
-      toast({
-        variant: "destructive",
-        title: "Mật khẩu không khớp",
-        description: "Vui lòng kiểm tra lại mật khẩu mới và xác nhận mật khẩu",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Đổi mật khẩu thành công",
-        description: "Mật khẩu của bạn đã được cập nhật",
-      });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }, 1000);
-  };
-
+  const stored = getAuthUser() || {};
   const userInfo = {
-    name: "Nguyễn Văn A",
-    email: "kythuatvien@osi.com.vn",
-    phone: "0901234567",
-    employeeId: "KTV001",
-    department: "Kỹ thuật",
-    joinDate: "01/01/2020",
-    address: "TP. Hồ Chí Minh",
+    name: stored.name || "Nguyễn Văn A",
+    email: stored.email || "kythuatvien@osi.com.vn",
+    phone: stored.phone || "",
+    employeeId: stored["staff-code"] || stored.staffCode || "KTV001",
+    department: stored.department || "Kỹ thuật",
+    joinDate: stored.joinDate || "01/01/2020",
+    address: stored.address || "TP. Hồ Chí Minh",
   };
 
   const achievements = [
@@ -74,7 +42,7 @@ const Profile = () => {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Profile Info */}
-          <Card className="shadow-card">
+            <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <User className="h-5 w-5 mr-2" />
@@ -152,48 +120,21 @@ const Profile = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
-                    <Input
-                      id="currentPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Mật khẩu mới</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-primary hover:opacity-90" 
-                    disabled={isLoading}
+                <Button 
+                  type="button" 
+                  className="w-full bg-gradient-primary hover:opacity-90"
+                  onClick={() => navigate("/change-password")}
+                >
+                  Đổi mật khẩu
+                </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full mt-3"
+                    onClick={() => { logout(); navigate("/login"); }}
                   >
-                    {isLoading ? "Đang cập nhật..." : "Đổi mật khẩu"}
+                    Đăng xuất
                   </Button>
-                </form>
               </CardContent>
             </Card>
 

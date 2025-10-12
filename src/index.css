@@ -136,3 +136,11 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure 3rd-party toast container does not block touch/scroll */
+.toaster {
+  pointer-events: none;
+}
+.toaster .toast {
+  pointer-events: auto;
+}

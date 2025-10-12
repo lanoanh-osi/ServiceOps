@@ -1,4 +1,4 @@
-import { Home, Package, Wrench, BarChart3, User } from "lucide-react";
+import { Home, Package, Wrench, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, Link } from "react-router-dom";
 
@@ -12,16 +12,18 @@ const navItems: NavItem[] = [
   { icon: Home, label: "Trang chủ", path: "/" },
   { icon: Package, label: "Giao hàng", path: "/delivery-install" },
   { icon: Wrench, label: "Bảo hành", path: "/maintenance" },
-  { icon: BarChart3, label: "Kinh doanh", path: "/sales" },
-  { icon: User, label: "Cá nhân", path: "/profile" },
+  { icon: BarChart3, label: "Hoạt động", path: "/sales" },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-elevated md:hidden">
-      <div className="grid h-16 max-w-lg grid-cols-5 mx-auto">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-elevated md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="grid h-16 max-w-lg grid-cols-4 mx-auto">
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;

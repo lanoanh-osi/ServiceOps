@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
+import { apiRequest } from "@/lib/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -20,15 +21,26 @@ const ForgotPassword = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    const res = await apiRequest<{ ok: boolean }>({
+      method: "POST",
+      path: "/api/auth/send-otp",
+      body: { email },
+    });
+
+    setIsLoading(false);
+    if (res.success) {
       setIsOtpSent(true);
       toast({
         title: "OTP đã được gửi",
         description: "Vui lòng kiểm tra email của bạn",
       });
-    }, 1000);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Gửi OTP thất bại",
+        description: res.message || "Vui lòng thử lại",
+      });
+    }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -45,16 +57,26 @@ const ForgotPassword = () => {
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    const res = await apiRequest<{ ok: boolean }>({
+      method: "POST",
+      path: "/api/auth/verify-otp-update-password",
+      body: { email, otp, newPassword },
+    });
+
+    setIsLoading(false);
+    if (res.success) {
       toast({
         title: "Đổi mật khẩu thành công",
         description: "Bạn có thể đăng nhập với mật khẩu mới",
       });
-      // Navigate to login
       window.location.href = "/login";
-    }, 1000);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Xác minh OTP thất bại",
+        description: res.message || "OTP không đúng hoặc đã hết hạn",
+      });
+    }
   };
 
   return (

@@ -71,3 +71,10 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Configuration
+
+- API base URL
+  - Set `VITE_API_BASE_URL` in your `.env` (e.g. `.env.development`, `.env.production`).
+  - If not set, the app will default to `window.location.origin` for API requests.
+  - The login helper `loginWithCredentials` currently calls the full URL `https://automation.osi.vn/webhook/login-H` as provided.

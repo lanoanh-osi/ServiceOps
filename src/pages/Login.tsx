@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { loginWithCredentials } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,24 +17,22 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      if (email && password) {
-        toast({
-          title: "Đăng nhập thành công",
-          description: "Chào mừng bạn trở lại!",
-        });
-        // Navigate to dashboard
-        window.location.href = "/";
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Đăng nhập không thành công",
-          description: "Vui lòng kiểm tra email và mật khẩu.",
-        });
-      }
-    }, 1000);
+    const res = await loginWithCredentials(email, password);
+
+    setIsLoading(false);
+    if (res.success && res.data?.token) {
+      toast({
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn trở lại!",
+      });
+      window.location.href = "/";
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Đăng nhập không thành công",
+        description: res.message || "Vui lòng kiểm tra email và mật khẩu.",
+      });
+    }
   };
 
   return (
