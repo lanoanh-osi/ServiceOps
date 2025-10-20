@@ -93,8 +93,12 @@ const ForgotPassword = () => {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="h-16 w-16 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">OSI</span>
+          <div className="h-16 w-auto mx-auto mb-4 flex items-center justify-center">
+            <img 
+              src="https://github.com/lanoanh-osi/OSI-Image/raw/main/logo-bg-blue.png"
+              alt="OSI Logo"
+              className="h-16 w-auto rounded-xl"
+            />
           </div>
           <h1 className="text-xl font-bold text-white mb-2">
             Quên mật khẩu

@@ -9,8 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getAuthUser, logout } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import { handleLogout } from "@/lib/onesignal";
 
 type HeaderProps = {
   pageTitle?: string;
@@ -18,12 +18,23 @@ type HeaderProps = {
 
 const Header = ({ pageTitle }: HeaderProps) => {
   const navigate = useNavigate();
-  const user = getAuthUser() || {} as any;
-  const displayName = user.name || user.fullName || "Nguyễn Văn A";
-  const displayEmail = user.email || "kythuatvien@osi.com.vn";
+  
+  // Get user data from localStorage
+  const getUserData = () => {
+    try {
+      const userStr = localStorage.getItem("auth_user");
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
+  };
+  
+  const user = getUserData();
+  const displayName = user?.name || user?.fullName || "Nguyễn Văn A";
+  const displayEmail = user?.email || "kythuatvien@osi.com.vn";
 
-  const handleLogout = () => {
-    logout();
+  const onLogout = () => {
+    handleLogout();
     navigate("/login");
   };
   return (
@@ -31,9 +42,11 @@ const Header = ({ pageTitle }: HeaderProps) => {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">OSI</span>
-          </div>
+          <img 
+            src="https://github.com/lanoanh-osi/OSI-Image/raw/main/logo-bg-blue.png"
+            alt="OSI Logo"
+            className="h-8 w-auto rounded-lg"
+          />
           <div className="flex flex-col">
             <span className={`${pageTitle ? "text-base md:text-lg" : "text-sm"} font-semibold text-foreground`}>
               {pageTitle || "O.S.I Service Ops"}
@@ -70,7 +83,7 @@ const Header = ({ pageTitle }: HeaderProps) => {
                 <User className="mr-2 h-4 w-4" />
                 Thông tin cá nhân
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={onLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Đăng xuất
               </DropdownMenuItem>

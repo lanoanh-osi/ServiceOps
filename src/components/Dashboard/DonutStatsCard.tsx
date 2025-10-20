@@ -13,7 +13,7 @@ const DonutStatsCard = ({ title, percentage, className }: DonutStatsCardProps) =
     <Card className={cn("shadow-card hover:shadow-elevated transition-all duration-300", className)}>
       <CardContent className="p-6">
         <div className="flex flex-col items-center text-center">
-          <p className="text-sm font-medium text-muted-foreground mb-1">
+          <p className="text-sm font-medium text-muted-foreground mb-4">
             {title}
           </p>
           <DonutChart percentage={percentage} size="sm" />

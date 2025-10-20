@@ -27,9 +27,12 @@ const App = () => (
       <BrowserRouter>
         <ScrollUnlock />
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* Public routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          
+          {/* App routes */}
+          <Route path="/" element={<Index />} />
           <Route path="/delivery-install" element={<DeliveryInstall />} />
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/sales" element={<Sales />} />
@@ -38,7 +41,8 @@ const App = () => (
           <Route path="/delivery-install/:id" element={<DeliveryInstallDetail />} />
           <Route path="/maintenance/:id" element={<MaintenanceDetail />} />
           <Route path="/sales/:id" element={<SalesSupportDetail />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+          {/* 404 route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -586,6 +586,87 @@ export async function getUserStats(): Promise<ApiResponse<UserStats>> {
     return apiRequest<UserStats>({ method: "GET", path: "/api/users/me/stats", withAuth: true });
 }
 
+// Mutations
+export async function acceptTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        const idx = mockTickets.findIndex((t) => t.id === ticketId);
+        if (idx >= 0) mockTickets[idx].status = "in-progress";
+        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/accept`, withAuth: true });
+}
+
+export async function updateTicketStatus(ticketId: string, status: TicketStatus): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        const idx = mockTickets.findIndex((t) => t.id === ticketId);
+        if (idx >= 0) mockTickets[idx].status = status;
+        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = status;
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    return apiRequest({ method: "PATCH", path: `/api/tickets/${ticketId}/status`, body: { status }, withAuth: true });
+}
+
+export async function addTicketNote(ticketId: string, note: string): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        const current = mockTicketDetails[ticketId];
+        if (current) {
+            current.notes = current.notes ? `${current.notes}\n${note}` : note;
+        }
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/notes`, body: { note }, withAuth: true });
+}
+
+export async function uploadTicketImages(ticketId: string, files: File[]): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        // In mock mode we just resolve successfully
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    // Note: For real API this should be multipart/form-data; left JSON for placeholder
+    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/images`, body: { files: files.map((f) => ({ name: f.name, size: f.size })) }, withAuth: true });
+}
+
+// Accept Delivery & Installation ticket (n8n)
+export async function acceptDeliveryInstallTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        const idx = mockTickets.findIndex((t) => t.id === ticketId);
+        if (idx >= 0) mockTickets[idx].status = "in-progress";
+        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    const user = getAuthUser() || {} as any;
+    const staffCode = user["staff-code"] || user.staffCode || user.code || undefined;
+    const res = await apiRequest<{ status?: string; message?: string; data?: any }>({
+        method: "POST",
+        path: "/webhook/tickets/delivery-installation/accept",
+        body: { "ticket-id": ticketId, "staff-code": staffCode },
+    });
+    if (!res.success) return res as any;
+    const ok = ((res.data as any)?.status || "").toString().toLowerCase() === "success";
+    return { success: ok || res.success, status: res.status, data: { ok: ok || true } };
+}
+
+// Accept Maintenance/Repair ticket (n8n)
+export async function acceptMaintenanceRepairTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
+    if (USE_MOCK_DATA) {
+        const idx = mockTickets.findIndex((t) => t.id === ticketId);
+        if (idx >= 0) mockTickets[idx].status = "in-progress";
+        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
+        return { success: true, status: 200, data: { ok: true } };
+    }
+    const user = getAuthUser() || {} as any;
+    const staffCode = user["staff-code"] || user.staffCode || user.code || undefined;
+    const res = await apiRequest<{ status?: string; message?: string; data?: any }>({
+        method: "POST",
+        path: "/webhook/tickets/maintenance-repair/accept",
+        body: { "ticket-id": ticketId, "staff-code": staffCode },
+    });
+    if (!res.success) return res as any;
+    const ok = ((res.data as any)?.status || "").toString().toLowerCase() === "success";
+    return { success: ok || res.success, status: res.status, data: { ok: ok || true } };
+}
+
 // Get Performance Metrics from webhook
 export async function getPerformanceMetrics(): Promise<ApiResponse<PerformanceMetrics>> {
     const user = getAuthUser() || {} as any;
@@ -654,23 +735,32 @@ export async function getUnassignedTickets(): Promise<ApiResponse<{ items: Ticke
     const body = { email, "staff-code": staffCode } as any;
 
     if (USE_MOCK_DATA) {
-        // Return mock unassigned tickets
+        // Return mock unassigned tickets matching the API structure
         const mockUnassignedTickets: TicketSummary[] = [
             {
-                id: "TK-DL-003",
+                id: "TK-DL-005",
                 type: "delivery",
-                title: "Giao hàng và Lắp đặt",
-                customer: "Lê Hoàng Nam",
-                address: "789 Đường Trần Hưng Đạo, Quận 5, TP.HCM",
-                deadline: "2025-10-02T18:00:00.000Z",
+                title: "Công ty CP Đầu tư Minh Tuấn",
+                customer: "Công ty CP Đầu tư Minh Tuấn",
+                address: "654 Đường Lý Tự Trọng, Quận 1, TP.HCM",
+                deadline: "2025-10-01T16:00:00.000Z",
                 status: "assigned",
             },
             {
                 id: "MT20250926-175521",
                 type: "maintenance",
-                title: "Bảo trì / Sửa chữa",
+                title: "Lê Minh Cường",
                 customer: "Lê Minh Cường",
                 address: "undefined", // As shown in the image
+                deadline: "2025-09-26T10:55:21.298Z",
+                status: "assigned",
+            },
+            {
+                id: "MT20250926-175521",
+                type: "maintenance", 
+                title: "Võ Thị Hoa",
+                customer: "Võ Thị Hoa",
+                address: "Khu vực máy bơm, Nhà máy DEF, KCN Tân Thuận",
                 deadline: "2025-09-26T10:55:21.298Z",
                 status: "assigned",
             }
@@ -696,111 +786,96 @@ export async function getUnassignedTickets(): Promise<ApiResponse<{ items: Ticke
     const payload = res.data as any;
     let items: TicketSummary[] = [];
 
-    // Handle different response structures
-    if (Array.isArray(payload)) {
-        items = payload.map((item: any) => ({
-            id: item["ticket-id"] || item.ticket_id || `TK-${Date.now()}`,
-            type: item.type === "Giao hàng và Lắp đặt" ? "delivery" : 
-                  item.type === "Bảo trì / Sửa chữa" ? "maintenance" : "sales",
-            title: item.type || "Ticket chưa phân công",
-            customer: item.customer || "Khách hàng",
-            address: item.address === "undefined" ? "" : (item.address || ""),
-            deadline: item.deadline || new Date().toISOString(),
-            status: "assigned" as TicketStatus,
-            statusDisplayLabel: "Chưa phân công"
-        }));
+    // Handle different response structures including nested arrays
+	if (import.meta.env.DEV) {
+		console.debug('[getUnassignedTickets] raw payload:', payload);
+	}
+
+	if (Array.isArray(payload)) {
+        // Flatten nested arrays and map each item
+		const flattenItems = (node: any): any[] => {
+			if (Array.isArray(node)) {
+				return node.flatMap((child) => flattenItems(child));
+			}
+			if (node && typeof node === 'object') {
+				const keys = Object.keys(node);
+				// Handle objects that wrap an array under "" or a single key
+				if (keys.length === 1 && Array.isArray((node as any)[keys[0]])) {
+					return flattenItems((node as any)[keys[0]]);
+				}
+				return [node];
+			}
+			return [];
+		};
+
+		const flatPayload = flattenItems(payload);
+		if (import.meta.env.DEV) {
+			console.debug('[getUnassignedTickets] flat payload (array) length:', flatPayload.length);
+			console.debug('[getUnassignedTickets] sample item:', flatPayload[0]);
+		}
+        
+		items = flatPayload.map((item: any) => {
+			const id = item["ticket-id"] || item.ticket_id || item.ticketId || item.id;
+			const rawType = String(item?.type || '').trim();
+			const type: TicketType = rawType === "Giao hàng và Lắp đặt" ? "delivery" : rawType === "Bảo trì / Sửa chữa" ? "maintenance" : "sales";
+			if (import.meta.env.DEV && (!id || !type)) {
+				console.debug('[getUnassignedTickets] missing id/type item:', { id, rawType, item });
+			}
+			return {
+				id: id || `TK-${Date.now()}`,
+				type,
+				subTypeLabel: rawType || undefined,
+				title: item.customer || "Khách hàng",
+				customer: item.customer || "Khách hàng",
+				address: item.address === "undefined" ? "" : (item.address || ""),
+				deadline: item.deadline || new Date().toISOString(),
+				status: "assigned" as TicketStatus,
+				statusDisplayLabel: "Chưa phân công"
+			};
+		});
     } else if (payload?.data && Array.isArray(payload.data)) {
-        items = payload.data.map((item: any) => ({
-            id: item["ticket-id"] || item.ticket_id || `TK-${Date.now()}`,
-            type: item.type === "Giao hàng và Lắp đặt" ? "delivery" : 
-                  item.type === "Bảo trì / Sửa chữa" ? "maintenance" : "sales",
-            title: item.type || "Ticket chưa phân công",
-            customer: item.customer || "Khách hàng",
-            address: item.address === "undefined" ? "" : (item.address || ""),
-            deadline: item.deadline || new Date().toISOString(),
-            status: "assigned" as TicketStatus,
-            statusDisplayLabel: "Chưa phân công"
-        }));
+		const flattenItems = (node: any): any[] => {
+			if (Array.isArray(node)) {
+				return node.flatMap((child) => flattenItems(child));
+			}
+			if (node && typeof node === 'object') {
+				const keys = Object.keys(node);
+				if (keys.length === 1 && Array.isArray((node as any)[keys[0]])) {
+					return flattenItems((node as any)[keys[0]]);
+				}
+				return [node];
+			}
+			return [];
+		};
+
+		const flatPayload = flattenItems(payload.data);
+		if (import.meta.env.DEV) {
+			console.debug('[getUnassignedTickets] flat payload (payload.data) length:', flatPayload.length);
+			console.debug('[getUnassignedTickets] sample item (data):', flatPayload[0]);
+		}
+        
+		items = flatPayload.map((item: any) => {
+			const id = item["ticket-id"] || item.ticket_id || item.ticketId || item.id;
+			const rawType = String(item?.type || '').trim();
+			const type: TicketType = rawType === "Giao hàng và Lắp đặt" ? "delivery" : rawType === "Bảo trì / Sửa chữa" ? "maintenance" : "sales";
+			if (import.meta.env.DEV && (!id || !type)) {
+				console.debug('[getUnassignedTickets] missing id/type item (data):', { id, rawType, item });
+			}
+			return {
+				id: id || `TK-${Date.now()}`,
+				type,
+				subTypeLabel: rawType || undefined,
+				title: item.customer || "Khách hàng",
+				customer: item.customer || "Khách hàng",
+				address: item.address === "undefined" ? "" : (item.address || ""),
+				deadline: item.deadline || new Date().toISOString(),
+				status: "assigned" as TicketStatus,
+				statusDisplayLabel: "Chưa phân công"
+			};
+		});
     }
 
     return { success: true, status: 200, data: { items, total: items.length } };
-}
-
-// Mutations
-export async function acceptTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        const idx = mockTickets.findIndex((t) => t.id === ticketId);
-        if (idx >= 0) mockTickets[idx].status = "in-progress";
-        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/accept`, withAuth: true });
-}
-
-export async function updateTicketStatus(ticketId: string, status: TicketStatus): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        const idx = mockTickets.findIndex((t) => t.id === ticketId);
-        if (idx >= 0) mockTickets[idx].status = status;
-        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = status;
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    return apiRequest({ method: "PATCH", path: `/api/tickets/${ticketId}/status`, body: { status }, withAuth: true });
-}
-
-export async function addTicketNote(ticketId: string, note: string): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        const current = mockTicketDetails[ticketId];
-        if (current) {
-            current.notes = current.notes ? `${current.notes}\n${note}` : note;
-        }
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/notes`, body: { note }, withAuth: true });
-}
-
-export async function uploadTicketImages(ticketId: string, files: File[]): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        // In mock mode we just resolve successfully
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    // Note: For real API this should be multipart/form-data; left JSON for placeholder
-    return apiRequest({ method: "POST", path: `/api/tickets/${ticketId}/images`, body: { files: files.map((f) => ({ name: f.name, size: f.size })) }, withAuth: true });
-}
-
-// Accept Delivery & Installation ticket (n8n)
-export async function acceptDeliveryInstallTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        const idx = mockTickets.findIndex((t) => t.id === ticketId);
-        if (idx >= 0) mockTickets[idx].status = "in-progress";
-        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    const res = await apiRequest<{ status?: string; message?: string; data?: any }>({
-        method: "POST",
-        path: "/webhook/tickets/delivery-installation/accept",
-        body: { "ticket-id": ticketId },
-    });
-    if (!res.success) return res as any;
-    const ok = ((res.data as any)?.status || "").toString().toLowerCase() === "success";
-    return { success: ok || res.success, status: res.status, data: { ok: ok || true } };
-}
-
-// Accept Maintenance/Repair ticket (n8n)
-export async function acceptMaintenanceRepairTicket(ticketId: string): Promise<ApiResponse<{ ok: true }>> {
-    if (USE_MOCK_DATA) {
-        const idx = mockTickets.findIndex((t) => t.id === ticketId);
-        if (idx >= 0) mockTickets[idx].status = "in-progress";
-        if (mockTicketDetails[ticketId]) mockTicketDetails[ticketId].status = "in-progress";
-        return { success: true, status: 200, data: { ok: true } };
-    }
-    const res = await apiRequest<{ status?: string; message?: string; data?: any }>({
-        method: "POST",
-        path: "/webhook/tickets/maintenance-repair/accept",
-        body: { "ticket-id": ticketId },
-    });
-    if (!res.success) return res as any;
-    const ok = ((res.data as any)?.status || "").toString().toLowerCase() === "success";
-    return { success: ok || res.success, status: res.status, data: { ok: ok || true } };
 }
 
 // Create Activity & Support ticket

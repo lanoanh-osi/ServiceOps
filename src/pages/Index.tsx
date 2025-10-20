@@ -1,11 +1,11 @@
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, MapPin } from "lucide-react";
 import Header from "@/components/Layout/Header";
 import BottomNav from "@/components/Layout/BottomNav";
 import StatsCard from "@/components/Dashboard/StatsCard";
 import RatingStatsCard from "@/components/Dashboard/RatingStatsCard";
 import DonutStatsCard from "@/components/Dashboard/DonutStatsCard";
-import TicketList from "@/components/Dashboard/TicketList";
 import { useQuery } from "@tanstack/react-query";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { getPerformanceMetrics, getUnassignedTickets } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +36,13 @@ const Index = () => {
       return res.data;
     },
   });
+
+  // Debug: log unassigned tickets
+  React.useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.debug('[Index] unassignedTicketsData:', unassignedTicketsData);
+    }
+  }, [unassignedTicketsData]);
 
   const isLoading = isPerformanceLoading || isUnassignedLoading;
 
@@ -130,24 +137,14 @@ const Index = () => {
                 <h4 className="font-semibold text-foreground mb-2">
                   {ticket.title}
                 </h4>
-                
-                <div className="flex flex-col space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center space-x-1">
-                    <span className="font-medium">Khách hàng: {ticket.customer}</span>
+                {ticket.address ? (
+                  <div className="flex items-center space-x-1 text-sm text-muted-foreground mb-1">
+                    <MapPin className="h-4 w-4" />
+                    <span className="truncate">{ticket.address}</span>
                   </div>
-                  {ticket.address && ticket.address !== "undefined" && (
-                    <div className="flex items-center space-x-1">
-                      <span className="truncate">{ticket.address}</span>
-                    </div>
-                  )}
-                </div>
+                ) : null}
                 
-                <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center space-x-1 text-sm">
-                    <span className="font-medium text-orange-600">
-                      Hạn: {new Date(ticket.deadline).toLocaleString('vi-VN')}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-end mt-3">
                   <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-800">
                     Chưa phân công
                   </span>

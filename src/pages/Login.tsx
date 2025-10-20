@@ -1,37 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginWithCredentials } from "@/lib/api";
+import { oneSignalSetExternalId, oneSignalRequestPermissionAndOptIn } from "@/lib/onesignal";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const res = await loginWithCredentials(email, password);
+    try {
+      const res = await loginWithCredentials(email, password);
 
-    setIsLoading(false);
-    if (res.success && res.data?.token) {
-      toast({
-        title: "Đăng nhập thành công",
-        description: "Chào mừng bạn trở lại!",
-      });
-      window.location.href = "/";
-    } else {
+      if (res.success && res.data?.token && res.data?.user) {
+        // Store auth data
+        localStorage.setItem("auth_token", res.data.token);
+        localStorage.setItem("auth_user", JSON.stringify(res.data.user));
+
+        // OneSignal: set external ID (email) and ensure opted-in
+        const userId = String(res.data.user?.email || "").trim().toLowerCase();
+        if (userId) {
+          oneSignalSetExternalId(userId, { role: "technician" });
+          oneSignalRequestPermissionAndOptIn();
+        }
+        
+        toast({
+          title: "Đăng nhập thành công",
+          description: "Chào mừng bạn trở lại!",
+        });
+
+        // Redirect to intended page or home
+        const from = location.state?.from?.pathname || "/";
+        navigate(from, { replace: true });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Đăng nhập không thành công",
+          description: res.message || "Vui lòng kiểm tra email và mật khẩu.",
+        });
+      }
+    } catch (error) {
       toast({
         variant: "destructive",
-        title: "Đăng nhập không thành công",
-        description: res.message || "Vui lòng kiểm tra email và mật khẩu.",
+        title: "Lỗi đăng nhập",
+        description: "Đã xảy ra lỗi, vui lòng thử lại.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -40,8 +66,12 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="h-16 w-16 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">OSI</span>
+          <div className="h-16 w-auto mx-auto mb-4 flex items-center justify-center">
+            <img 
+              src="https://github.com/lanoanh-osi/OSI-Image/raw/main/logo-bg-blue.png"
+              alt="OSI Logo"
+              className="h-16 w-auto rounded-xl"
+            />
           </div>
           <h1 className="text-2xl font-bold text-white mb-2">
             O.S.I Service Ops
