@@ -324,7 +324,7 @@ const DeliveryInstallDetail = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Chọn hàng hóa đã xử lý</label>
                   <button type="button" className="text-xs underline mb-2" onClick={handleSelectAllGoods}>{selectedGoods.length === (data.orderInfo.secretCodes?.length || 0) ? "Bỏ chọn tất cả" : "Chọn tất cả"}</button>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {data.orderInfo.secretCodes.map((it: any, idx: number) => (
                       <label key={idx} className="flex items-center gap-2 border rounded p-2">
                         <input type="checkbox" checked={selectedGoods.includes(it.code)} onChange={() => handleGoodsChange(it.code)} />
@@ -339,7 +339,7 @@ const DeliveryInstallDetail = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Chọn thiết bị đã xử lý</label>
                   <button type="button" className="text-xs underline mb-2" onClick={handleSelectAllDevices}>{selectedDevices.length === (data.deviceInfo?.length || 0) ? "Bỏ chọn tất cả" : "Chọn tất cả"}</button>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     {data.deviceInfo.map((d: any, idx: number) => (
                       <label key={idx} className="flex items-center gap-2 border rounded p-2">
                         <input type="checkbox" checked={selectedDevices.includes(d.serial)} onChange={() => handleDeviceChange(d.serial)} />
