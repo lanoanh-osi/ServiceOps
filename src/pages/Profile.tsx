@@ -139,7 +139,7 @@ const Profile = () => {
             </Card>
 
             {/* Achievements */}
-            <Card className="shadow-card">
+            {/* <Card className="shadow-card">
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Award className="h-5 w-5 mr-2" />
@@ -157,7 +157,7 @@ const Profile = () => {
                   </div>
                 ))}
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </main>
