@@ -37,9 +37,20 @@ export function oneSignalSetExternalId(userId: string, tags?: Record<string, str
         return;
       }
       
-      // Set external ID (email) for targeting
-      await OneSignal.setExternalUserId(String(userId));
-      console.log("OneSignal external ID set:", userId);
+      // Set external ID (email) for targeting - OneSignal v16 API
+      try {
+        // OneSignal v16 sử dụng login() thay vì setExternalUserId()
+        await OneSignal.login(String(userId));
+        console.log("OneSignal external ID set (login):", userId);
+      } catch (loginError) {
+        // Fallback: thử setExternalUserId nếu login() không hoạt động
+        try {
+          await OneSignal.setExternalUserId(String(userId));
+          console.log("OneSignal external ID set (fallback):", userId);
+        } catch (fallbackError) {
+          console.warn("⚠️ Both login methods failed:", fallbackError.message);
+        }
+      }
       
       // Add tags if provided
       if (tags && Object.keys(tags).length > 0) {
@@ -75,8 +86,19 @@ export function oneSignalLogout() {
         return;
       }
       
-      await OneSignal.removeExternalUserId();
-      console.log("OneSignal external ID removed");
+      // OneSignal v16 sử dụng logout() thay vì removeExternalUserId()
+      try {
+        await OneSignal.logout();
+        console.log("OneSignal external ID removed (logout)");
+      } catch (logoutError) {
+        // Fallback: thử removeExternalUserId nếu logout() không hoạt động
+        try {
+          await OneSignal.removeExternalUserId();
+          console.log("OneSignal external ID removed (fallback)");
+        } catch (fallbackError) {
+          console.warn("⚠️ Both logout methods failed:", fallbackError.message);
+        }
+      }
     } catch (err) {
       console.error("OneSignal logout error", err);
     }
@@ -113,6 +135,39 @@ export function oneSignalRequestPermissionAndOptIn() {
       } catch {}
     } catch (err) {
       console.error("OneSignal opt-in error", err);
+    }
+  });
+}
+
+// Debug function to check OneSignal status
+export function debugOneSignalStatus() {
+  enqueue(async (OneSignal) => {
+    try {
+      console.log("🔍 OneSignal Debug Info:");
+      console.log("- OneSignal object:", !!OneSignal);
+      console.log("- Notifications:", !!OneSignal?.Notifications);
+      console.log("- User:", !!OneSignal?.User);
+      console.log("- PushSubscription:", !!OneSignal?.User?.PushSubscription);
+      
+      if (OneSignal?.User?.PushSubscription) {
+        const playerId = OneSignal.User.PushSubscription.id;
+        console.log("- Player ID:", playerId);
+      }
+      
+      if (OneSignal?.Notifications) {
+        const permission = await OneSignal.Notifications.permission;
+        console.log("- Permission:", permission);
+      }
+      
+      // Check available methods
+      console.log("- Available methods:");
+      console.log("  - login:", typeof OneSignal?.login);
+      console.log("  - logout:", typeof OneSignal?.logout);
+      console.log("  - setExternalUserId:", typeof OneSignal?.setExternalUserId);
+      console.log("  - removeExternalUserId:", typeof OneSignal?.removeExternalUserId);
+      
+    } catch (err) {
+      console.error("Debug error:", err);
     }
   });
 }
@@ -159,12 +214,20 @@ export function oneSignalCompleteSetup(userEmail: string) {
         console.warn("⚠️ Failed to get Player ID:", playerError.message);
       }
 
-      // 4. Gắn external_user_id (sử dụng email)
+      // 4. Gắn external_user_id (sử dụng email) - OneSignal v16 API
       try {
-        await OneSignal.setExternalUserId(userEmail);
+        // OneSignal v16 sử dụng login() thay vì setExternalUserId()
+        await OneSignal.login(userEmail);
         console.log("🔗 Linked external_user_id (email):", userEmail);
       } catch (externalIdError) {
         console.warn("⚠️ Failed to set external user ID:", externalIdError.message);
+        // Fallback: thử setExternalUserId nếu login() không hoạt động
+        try {
+          await OneSignal.setExternalUserId(userEmail);
+          console.log("🔗 Fallback: Linked external_user_id (email):", userEmail);
+        } catch (fallbackError) {
+          console.warn("⚠️ Fallback also failed:", fallbackError.message);
+        }
       }
 
       // 5. Gửi playerId về server hoặc n8n webhook

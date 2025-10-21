@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginWithCredentials } from "@/lib/api";
-import { oneSignalCompleteSetup } from "@/lib/onesignal";
+import { oneSignalCompleteSetup, debugOneSignalStatus } from "@/lib/onesignal";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -31,6 +31,9 @@ const Login = () => {
         // OneSignal: Complete setup with email as external_user_id
         const userEmail = String(res.data.user?.email || "").trim().toLowerCase();
         if (userEmail) {
+          // Debug OneSignal status first
+          debugOneSignalStatus();
+          // Then setup OneSignal
           oneSignalCompleteSetup(userEmail);
         }
         
