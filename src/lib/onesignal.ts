@@ -230,25 +230,20 @@ export function oneSignalCompleteSetup(userEmail: string) {
         }
       }
 
-      // 5. Gửi playerId về server hoặc n8n webhook
+      // 5. Gửi playerId về server để cập nhật
       if (playerId) {
         try {
-          const response = await fetch("https://n8n.osi.vn/webhook/save-player-id", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_email: userEmail,
-              player_id: playerId
-            })
-          });
+          // Import API function dynamically to avoid circular dependency
+          const { updateOneSignalPlayerId } = await import("@/lib/api");
+          const result = await updateOneSignalPlayerId(playerId);
           
-          if (response.ok) {
-            console.log("✅ Player ID sent to webhook successfully");
+          if (result.success) {
+            console.log("✅ OneSignal Player ID updated successfully");
           } else {
-            console.warn("⚠️ Failed to send player ID to webhook:", response.status);
+            console.warn("⚠️ Failed to update OneSignal Player ID:", result.message);
           }
-        } catch (webhookError) {
-          console.error("❌ Webhook error:", webhookError);
+        } catch (apiError) {
+          console.error("❌ API error:", apiError);
         }
       }
 

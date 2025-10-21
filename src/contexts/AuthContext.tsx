@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getAuthToken, getAuthUser, clearAuth, setAuthToken, setAuthUser, AuthUser } from '@/lib/api';
-import { oneSignalLogout } from '@/lib/onesignal';
+import { oneSignalLogout, oneSignalCompleteSetup } from '@/lib/onesignal';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -32,6 +32,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (existingToken && existingUser) {
           setToken(existingToken);
           setUser(existingUser);
+          
+          // Khởi tạo OneSignal nếu user đã đăng nhập từ trước
+          if (existingUser.email) {
+            console.log("🚀 Starting OneSignal setup for existing user...");
+            oneSignalCompleteSetup(existingUser.email);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -49,6 +55,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthUser(newUser);
     setToken(newToken);
     setUser(newUser);
+    
+    // Khởi tạo OneSignal và cập nhật Player ID sau khi đăng nhập thành công
+    if (newUser.email) {
+      console.log("🚀 Starting OneSignal setup after login...");
+      oneSignalCompleteSetup(newUser.email);
+    }
   };
 
   const logout = () => {

@@ -1926,6 +1926,44 @@ export async function createActivitySupportTicket(input: CreateActivitySupportTi
     };
 }
 
+// Update OneSignal Player ID
+export async function updateOneSignalPlayerId(playerId: string): Promise<ApiResponse<{ ok: true }>> {
+    const user = getAuthUser() || {} as any;
+    const email = user.email || "";
+    const staffCode = user["staff-code"] || user.staffCode || user.code || "";
+    
+    const body = {
+        email,
+        "staff-code": staffCode,
+        "player-id": playerId
+    };
+
+    const res = await apiRequest<{ status?: string; message?: string }>({
+        method: "POST",
+        path: "/webhook/change-onesignal-id",
+        body,
+    });
+    
+    if (!res.success) return res as any;
+    
+    const status = (res.data as any)?.status;
+    const isOk = typeof status === "string" ? status.toLowerCase() === "success" : true;
+    
+    if (!isOk) {
+        return { 
+            success: false, 
+            status: res.status, 
+            message: (res.data as any)?.message || "Cập nhật OneSignal Player ID không thành công" 
+        } as any;
+    }
+    
+    return { 
+        success: true, 
+        status: res.status, 
+        data: { ok: true } 
+    };
+}
+
 // Check device by serial number
 export interface DeviceInfo {
     brand?: string;
