@@ -47,15 +47,17 @@
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function(OneSignal) {
-        // Only initialize on production domain
-        if (window.location.hostname === 'service-ops-blush.vercel.app') {
+        try {
           await OneSignal.init({
             appId: "dde606c8-3a82-44a5-b55d-7cf05b8c004f",
             allowLocalhostAsSecureOrigin: true,
-            autoRegister: false
+            autoRegister: false,
+            notifyButton: { enable: false }
           });
-        } else {
-          console.log("OneSignal disabled on localhost");
+          console.log("✅ OneSignal initialized successfully");
+        } catch (error) {
+          console.warn("⚠️ OneSignal initialization failed:", error.message);
+          // Continue without OneSignal if initialization fails
         }
       });
     </script>

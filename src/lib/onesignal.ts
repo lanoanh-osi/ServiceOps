@@ -12,14 +12,11 @@ function enqueue(callback: (OneSignal: any) => void) {
   window.OneSignalDeferred.push(callback as any);
 }
 
-// Check if OneSignal is available (only on production)
-function isOneSignalAvailable(): boolean {
-  return window.location.hostname === 'service-ops-blush.vercel.app';
-}
+// OneSignal is now available on all domains
 
 export function oneSignalSetExternalId(userId: string, tags?: Record<string, string>) {
-  if (!userId || !isOneSignalAvailable()) {
-    console.log("OneSignal not available on localhost - skipping setExternalId");
+  if (!userId) {
+    console.log("No userId provided - skipping setExternalId");
     return;
   }
   
@@ -60,10 +57,6 @@ export function oneSignalSetExternalId(userId: string, tags?: Record<string, str
 }
 
 export function oneSignalLogout() {
-  if (!isOneSignalAvailable()) {
-    console.log("OneSignal not available on localhost - skipping logout");
-    return;
-  }
   
   enqueue(async (OneSignal) => {
     try {
@@ -101,10 +94,6 @@ export function handleLogout() {
 }
 
 export function oneSignalRequestPermissionAndOptIn() {
-  if (!isOneSignalAvailable()) {
-    console.log("OneSignal not available on localhost - skipping permission request");
-    return;
-  }
   
   enqueue(async (OneSignal) => {
     try {
@@ -128,15 +117,92 @@ export function oneSignalRequestPermissionAndOptIn() {
   });
 }
 
+// Complete OneSignal setup flow with email as external_user_id
+export function oneSignalCompleteSetup(userEmail: string) {
+  if (!userEmail) {
+    console.log("No user email provided - skipping OneSignal setup");
+    return;
+  }
+
+  enqueue(async (OneSignal) => {
+    try {
+      console.log("🚀 Starting OneSignal complete setup...");
+
+      // Check if OneSignal is properly initialized
+      if (!OneSignal || !OneSignal.Notifications) {
+        console.warn("⚠️ OneSignal not properly initialized - skipping setup");
+        return;
+      }
+
+      // 1. Đảm bảo OneSignal được khởi tạo (đã được init trong index.html)
+      console.log("✅ OneSignal already initialized");
+
+      // 2. Kiểm tra quyền thông báo
+      const permission = await OneSignal.Notifications.permission;
+      console.log("🔔 Current permission:", permission);
+      
+      if (permission !== "granted") {
+        console.log("📱 Requesting notification permission...");
+        try {
+          await OneSignal.Notifications.requestPermission();
+        } catch (permError) {
+          console.warn("⚠️ Permission request failed:", permError.message);
+        }
+      }
+
+      // 3. Lấy player_id
+      let playerId = null;
+      try {
+        playerId = await OneSignal.User.PushSubscription.id;
+        console.log("🎯 Player ID:", playerId);
+      } catch (playerError) {
+        console.warn("⚠️ Failed to get Player ID:", playerError.message);
+      }
+
+      // 4. Gắn external_user_id (sử dụng email)
+      try {
+        await OneSignal.setExternalUserId(userEmail);
+        console.log("🔗 Linked external_user_id (email):", userEmail);
+      } catch (externalIdError) {
+        console.warn("⚠️ Failed to set external user ID:", externalIdError.message);
+      }
+
+      // 5. Gửi playerId về server hoặc n8n webhook
+      if (playerId) {
+        try {
+          const response = await fetch("https://n8n.osi.vn/webhook/save-player-id", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_email: userEmail,
+              player_id: playerId
+            })
+          });
+          
+          if (response.ok) {
+            console.log("✅ Player ID sent to webhook successfully");
+          } else {
+            console.warn("⚠️ Failed to send player ID to webhook:", response.status);
+          }
+        } catch (webhookError) {
+          console.error("❌ Webhook error:", webhookError);
+        }
+      }
+
+      console.log("🎉 OneSignal setup completed!");
+
+    } catch (err) {
+      console.error("⚠️ OneSignal setup failed:", err.message || err);
+    }
+  });
+}
+
 // Optional snapshot helper (best effort; properties may vary across versions)
 export async function getOneSignalSubscriptionSnapshot(): Promise<{
   playerId: string | null;
   optedIn: boolean;
   permission: "default" | "granted" | "denied";
 }> {
-  if (!isOneSignalAvailable()) {
-    return { playerId: null, optedIn: false, permission: "default" };
-  }
   
   return new Promise((resolve) => {
     enqueue(async (OneSignal) => {

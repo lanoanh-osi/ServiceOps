@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginWithCredentials } from "@/lib/api";
-import { oneSignalSetExternalId, oneSignalRequestPermissionAndOptIn } from "@/lib/onesignal";
+import { oneSignalCompleteSetup } from "@/lib/onesignal";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,11 +28,10 @@ const Login = () => {
         localStorage.setItem("auth_token", res.data.token);
         localStorage.setItem("auth_user", JSON.stringify(res.data.user));
 
-        // OneSignal: set external ID (email) and ensure opted-in
-        const userId = String(res.data.user?.email || "").trim().toLowerCase();
-        if (userId) {
-          oneSignalSetExternalId(userId, { role: "technician" });
-          oneSignalRequestPermissionAndOptIn();
+        // OneSignal: Complete setup with email as external_user_id
+        const userEmail = String(res.data.user?.email || "").trim().toLowerCase();
+        if (userEmail) {
+          oneSignalCompleteSetup(userEmail);
         }
         
         toast({
