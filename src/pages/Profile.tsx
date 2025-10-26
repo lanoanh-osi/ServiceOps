@@ -4,22 +4,21 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Header from "@/components/Layout/Header";
 import BottomNav from "@/components/Layout/BottomNav";
-import { User, Lock, Mail, Phone, MapPin, Calendar, Award } from "lucide-react";
+import { User, Lock, Mail, Phone, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getAuthUser, logout } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const stored = getAuthUser() || {};
+  const stored = user || {};
   const userInfo = {
     name: stored.name || "Nguyễn Văn A",
     email: stored.email || "kythuatvien@osi.com.vn",
     phone: stored.phone || "",
     employeeId: stored["staff-code"] || stored.staffCode || "KTV001",
     department: stored.department || "Kỹ thuật",
-    joinDate: stored.joinDate || "01/01/2020",
-    address: stored.address || "TP. Hồ Chí Minh",
   };
 
   const achievements = [
@@ -33,12 +32,12 @@ const Profile = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-6 pb-20 md:pb-6">
-        <div className="mb-6">
+        {/* <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2">Thông tin cá nhân</h1>
           <p className="text-muted-foreground">
             Quản lý thông tin tài khoản và bảo mật
           </p>
-        </div>
+        </div> */}
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Profile Info */}
@@ -85,22 +84,6 @@ const Profile = () => {
                   <div>
                     <p className="text-sm font-medium">Số điện thoại</p>
                     <p className="text-sm text-muted-foreground">{userInfo.phone}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Địa chỉ</p>
-                    <p className="text-sm text-muted-foreground">{userInfo.address}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Ngày vào công ty</p>
-                    <p className="text-sm text-muted-foreground">{userInfo.joinDate}</p>
                   </div>
                 </div>
               </div>

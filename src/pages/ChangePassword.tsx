@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, getAuthUser, logout } from "@/lib/api";
 import { Link } from "react-router-dom";
 
 const ChangePassword = () => {
@@ -31,22 +31,30 @@ const ChangePassword = () => {
 
     setIsLoading(true);
 
+    // Get user email from auth context
+    const user = getAuthUser();
+    const userEmail = user?.email || "";
+
     const res = await apiRequest<{ ok: boolean }>({
       method: "POST",
-      path: "/api/auth/change-password",
+      path: "/webhook/change-password",
       withAuth: true,
-      body: { currentPassword, newPassword },
+      body: { 
+        email: userEmail,
+        "old-password": currentPassword, 
+        "new-password": newPassword 
+      },
     });
 
     setIsLoading(false);
     if (res.success) {
       toast({
         title: "Đổi mật khẩu thành công",
-        description: "Mật khẩu của bạn đã được cập nhật",
+        description: "Mật khẩu của bạn đã được cập nhật. Vui lòng đăng nhập lại.",
       });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      // Logout user and redirect to login
+      logout();
+      window.location.href = "/login";
     } else {
       toast({
         variant: "destructive",

@@ -23,7 +23,7 @@ const ForgotPassword = () => {
 
     const res = await apiRequest<{ ok: boolean }>({
       method: "POST",
-      path: "/api/auth/send-otp",
+      path: "/webhook/sent-otp",
       body: { email },
     });
 
@@ -59,7 +59,7 @@ const ForgotPassword = () => {
 
     const res = await apiRequest<{ ok: boolean }>({
       method: "POST",
-      path: "/api/auth/verify-otp-update-password",
+      path: "/webhook/reset-otp",
       body: { email, otp, newPassword },
     });
 

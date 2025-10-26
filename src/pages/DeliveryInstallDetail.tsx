@@ -1,14 +1,15 @@
 import Header from "@/components/Layout/Header";
 import DetailTopNav from "@/components/Layout/DetailTopNav";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TicketDetail as TicketDetailType, fetchDeliveryInstallTicketDetail, acceptDeliveryInstallTicket, completeDeliveryInstallTicket } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlarmClock, Building2, Mail, MapPin, Phone, PlayCircle, CheckCircle, Camera, X, Package, Receipt, Wrench } from "lucide-react";
+import { AlarmClock, Building2, Mail, MapPin, Phone, PlayCircle, CheckCircle, Camera, X, Package, Receipt, Wrench, Tag, Info, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn, formatDate } from "@/lib/utils";
 import { toast as notify } from "@/components/ui/sonner";
 import React, { useRef, useState } from "react";
@@ -30,12 +31,42 @@ const Section = ({ title, icon, accentClass, rightSlot, children }: { title: str
 
 const DeliveryInstallDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [showReportForm, setShowReportForm] = useState(false);
   const [selectedGoods, setSelectedGoods] = useState<string[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [images, setImages] = useState<File[]>([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Helper function để map trạng thái
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "assigned":
+        return { label: "Đã phân công", color: "bg-blue-100 text-blue-800 border-blue-200", icon: <Tag className="h-4 w-4" /> };
+      case "in-progress":
+        return { label: "Đang thực hiện", color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: <PlayCircle className="h-4 w-4" /> };
+      case "completed":
+        return { label: "Đã hoàn thành", color: "bg-green-100 text-green-800 border-green-200", icon: <CheckCircle className="h-4 w-4" /> };
+      default:
+        return { label: "Không xác định", color: "bg-gray-100 text-gray-800 border-gray-200", icon: <Info className="h-4 w-4" /> };
+    }
+  };
+
+  // Helper function để map loại ticket
+  const getTicketTypeInfo = (type: string) => {
+    switch (type) {
+      case "delivery":
+        return { label: "Giao hàng & Lắp đặt", color: "bg-purple-100 text-purple-800 border-purple-200", icon: <Package className="h-4 w-4" /> };
+      case "maintenance":
+        return { label: "Bảo trì & Sửa chữa", color: "bg-orange-100 text-orange-800 border-orange-200", icon: <Wrench className="h-4 w-4" /> };
+      case "sales":
+        return { label: "Hoạt động & Hỗ trợ", color: "bg-indigo-100 text-indigo-800 border-indigo-200", icon: <Info className="h-4 w-4" /> };
+      default:
+        return { label: "Không xác định", color: "bg-gray-100 text-gray-800 border-gray-200", icon: <Info className="h-4 w-4" /> };
+    }
+  };
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["ticket-detail", "delivery", id],
@@ -127,16 +158,30 @@ const DeliveryInstallDetail = () => {
     <div className="min-h-screen bg-background">
       <DetailTopNav title="Chi tiết Ticket" />
       <main className="container mx-auto px-4 py-6 pb-24 space-y-4">
+        {/* Thông tin trạng thái và loại ticket */}
+        
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1">
             {id && (
-              <div className="w-full text-center px-3 py-2 rounded-md text-sm font-mono bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]">#{id}</div>
+              <div className="w-full text-center px-3 py-2 rounded-md text-sm font-mono bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]">#{id} </div>
             )}
           </div>
           {/* <div className="flex gap-2 shrink-0">
             {(isInProgress || isCompleted) && <Badge variant="secondary">Đã tiếp nhận</Badge>}
           </div> */}
         </div>
+        {data && (
+          <div className="flex justify-between gap-3">
+            <div className={`flex-1 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getTicketTypeInfo(data.type).color}`}>
+              {getTicketTypeInfo(data.type).icon}
+              {getTicketTypeInfo(data.type).label}
+            </div>
+            <div className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusInfo(data.status).color}`}>
+              {getStatusInfo(data.status).icon}
+              {data.statusDisplayLabel}
+            </div>
+          </div>
+        )}
         {data && isCompleted && (
           <div className="mt-4 rounded-2xl border-2 border-primary/30 bg-primary/5 px-4 py-5 sm:px-6 sm:py-6 flex items-center justify-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -145,6 +190,8 @@ const DeliveryInstallDetail = () => {
             <div className="text-lg sm:text-xl font-semibold tracking-wide text-primary">ĐÃ HOÀN THÀNH</div>
           </div>
         )}
+
+        
         {isLoading && (
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
@@ -159,7 +206,7 @@ const DeliveryInstallDetail = () => {
             <Section title="Thông tin khách hàng" icon={<Building2 className="h-5 w-5" />} accentClass="text-sky-600">
               <div className="text-sm space-y-3">
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <User className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{data.customerInfo?.name}</span>
                 </div>
                 {data.customerInfo?.contactPhone && (
@@ -367,7 +414,14 @@ const DeliveryInstallDetail = () => {
       <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-3 flex items-center gap-2">
           {data && isAssigned && (
-            <Button onClick={async () => { if (!id) return; const res = await acceptDeliveryInstallTicket(id); if (res.success) { notify.success("Tiếp nhận thành công", { description: `Ticket ${id} đã chuyển sang trạng thái đang thực hiện.` }); await refetch(); } }} size="lg" className="flex-1">
+            <Button onClick={async () => { 
+              if (!id) return; 
+              const res = await acceptDeliveryInstallTicket(id); 
+              if (res.success) { 
+                setShowSuccessModal(true);
+                await refetch(); 
+              } 
+            }} size="lg" className="flex-1">
               <PlayCircle />
               Tiếp nhận thực hiện
             </Button>
@@ -380,6 +434,36 @@ const DeliveryInstallDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Tiếp nhận thành công</DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Ticket #{id} đã chuyển sang trạng thái đang thực hiện.
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate("/delivery-install");
+              }} 
+              className="w-full"
+            >
+              Đóng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

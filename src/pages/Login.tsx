@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginWithCredentials } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { oneSignalCompleteSetup, debugOneSignalStatus } from "@/lib/onesignal";
 
 const Login = () => {
@@ -15,6 +16,7 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,9 +26,8 @@ const Login = () => {
       const res = await loginWithCredentials(email, password);
 
       if (res.success && res.data?.token && res.data?.user) {
-        // Store auth data
-        localStorage.setItem("auth_token", res.data.token);
-        localStorage.setItem("auth_user", JSON.stringify(res.data.user));
+        // Use AuthContext to store auth data
+        login(res.data.token, res.data.user);
 
         // OneSignal: Complete setup with email as external_user_id
         const userEmail = String(res.data.user?.email || "").trim().toLowerCase();

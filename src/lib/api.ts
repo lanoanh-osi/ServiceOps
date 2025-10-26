@@ -81,11 +81,11 @@ export async function apiRequest<T = unknown>(options: ApiRequestOptions): Promi
 			return { success: false, status: 401, message: "Sai thông tin đăng nhập (mật khẩu mẫu: 123456)" };
 		}
 
-		if (path === "/api/auth/send-otp") {
+		if (path === "/webhook/sent-otp") {
 			return { success: true, status: 200, data: { ok: true } as any };
 		}
 
-		if (path === "/api/auth/verify-otp-update-password") {
+		if (path === "/webhook/reset-otp") {
 			const otp = (body as any)?.otp as string;
 			if (otp && otp.length >= 4) {
 				return { success: true, status: 200, data: { ok: true } as any };
@@ -93,12 +93,12 @@ export async function apiRequest<T = unknown>(options: ApiRequestOptions): Promi
 			return { success: false, status: 400, message: "OTP không đúng" };
 		}
 
-		if (path === "/api/auth/change-password") {
+		if (path === "/webhook/change-password") {
 			if (!withAuth || !getAuthToken()) {
 				return { success: false, status: 401, message: "Chưa đăng nhập" };
 			}
-			const currentPassword = (body as any)?.currentPassword as string;
-			if (currentPassword === "123456") {
+			const oldPassword = (body as any)?.["old-password"] as string;
+			if (oldPassword === "123456") {
 				return { success: true, status: 200, data: { ok: true } as any };
 			}
 			return { success: false, status: 400, message: "Mật khẩu hiện tại không đúng (mẫu: 123456)" };

@@ -1,6 +1,6 @@
 import Header from "@/components/Layout/Header";
 import DetailTopNav from "@/components/Layout/DetailTopNav";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { acceptTicket, getTicketDetail, TicketDetail as TicketDetailType, fetchMaintenanceTicketDetail, updateMaintenanceContactInfo, checkDeviceSerial, updateMaintenanceDeviceInfo, fetchMaintenanceTicketTypes, fetchMaintenanceTicketCategories, updateMaintenanceTypeCategory, updateMaintenanceFirstResponse, updateMaintenanceSupplierInstruction, maintenanceStart, maintenanceResult, acceptMaintenanceRepairTicket } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +35,7 @@ const Section = ({ title, icon, accentClass, rightSlot, children }: { title: str
 
 const MaintenanceDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
   const { data, isLoading, isError } = useQuery({
@@ -93,6 +94,7 @@ const MaintenanceDetail = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ticket-detail", "maintenance", id] });
       qc.invalidateQueries({ queryKey: ["tickets"] });
+      setShowSuccessModal(true);
     },
   });
 
@@ -104,6 +106,7 @@ const MaintenanceDetail = () => {
   const [openContactEdit, setOpenContactEdit] = useState(false);
   const [openDeviceEdit, setOpenDeviceEdit] = useState(false);
   const [openIssueEdit, setOpenIssueEdit] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [firstRecorded, setFirstRecorded] = useState(false);
   const [supplierRecorded, setSupplierRecorded] = useState(false);
@@ -850,6 +853,36 @@ const MaintenanceDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Tiếp nhận thành công</DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Ticket #{id} đã chuyển sang trạng thái đang thực hiện.
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                navigate("/maintenance");
+              }} 
+              className="w-full"
+            >
+              Đóng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

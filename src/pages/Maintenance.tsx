@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Header from "@/components/Layout/Header";
 import BottomNav from "@/components/Layout/BottomNav";
 import TicketList from "@/components/Dashboard/TicketList";
@@ -6,9 +7,51 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { Plus } from "lucide-react";
 import CreateEmergencyMaintenanceForm from "@/components/CreateEmergencyMaintenanceForm";
+import { getTickets } from "@/lib/api";
 
 const Maintenance = () => {
   const [openEmergencyForm, setOpenEmergencyForm] = React.useState(false);
+  const [ticketCounts, setTicketCounts] = useState({
+    assigned: 0,
+    "in-progress": 0,
+    completed: 0,
+  });
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [assignedRes, inProgressRes, completedRes] = await Promise.all([
+          getTickets({ type: "maintenance", status: "assigned", pageSize: 1 }),
+          getTickets({ type: "maintenance", status: "in-progress", pageSize: 1 }),
+          getTickets({ type: "maintenance", status: "completed", pageSize: 1 }),
+        ]);
+
+        setTicketCounts({
+          assigned: assignedRes.success ? assignedRes.data?.total || 0 : 0,
+          "in-progress": inProgressRes.success ? inProgressRes.data?.total || 0 : 0,
+          completed: completedRes.success ? completedRes.data?.total || 0 : 0,
+        });
+      } catch (error) {
+        console.error("Error fetching ticket counts:", error);
+      }
+    };
+
+    fetchCounts();
+  }, []);
+
+  const getCountBadgeColor = (status: string) => {
+    switch (status) {
+      case "assigned":
+        return "bg-orange-500 text-white";
+      case "in-progress":
+        return "bg-blue-500 text-white";
+      case "completed":
+        return "bg-green-500 text-white";
+      default:
+        return "bg-gray-500 text-white";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header pageTitle="Bảo hành & Sửa chữa" />
@@ -27,9 +70,30 @@ const Maintenance = () => {
 
         <Tabs defaultValue="assigned" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="assigned">Tiếp nhận</TabsTrigger>
-            <TabsTrigger value="in-progress">Đang thực hiện</TabsTrigger>
-            <TabsTrigger value="completed">Đã hoàn thành</TabsTrigger>
+            <TabsTrigger value="assigned" className="relative">
+              Tiếp nhận
+              {ticketCounts.assigned > 0 && (
+                <span className={`absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-medium ${getCountBadgeColor("assigned")}`}>
+                  {ticketCounts.assigned}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="in-progress" className="relative">
+              Đang thực hiện
+              {/* {ticketCounts["in-progress"] > 0 && (
+                <span className={`absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-medium ${getCountBadgeColor("in-progress")}`}>
+                  {ticketCounts["in-progress"]}
+                </span>
+              )} */}
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="relative">
+              Đã hoàn thành
+              {/* {ticketCounts.completed > 0 && (
+                <span className={`absolute -top-1 -right-1 h-5 w-5 rounded-full text-xs flex items-center justify-center font-medium ${getCountBadgeColor("completed")}`}>
+                  {ticketCounts.completed}
+                </span>
+              )} */}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="assigned" className="mt-4">

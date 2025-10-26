@@ -59,7 +59,7 @@ const Index = () => {
               Chào mừng, Kỹ thuật viên!
             </h1>
             <p className="text-blue-100">
-              Hôm nay bạn có <span className="font-semibold">{unassignedTicketsData?.total || 0} ticket</span> chưa được phân công
+              O.S.I có <span className="font-semibold">{unassignedTicketsData?.total || 0} ticket</span> chưa được phân công
             </p>
           </div>
         </div>
