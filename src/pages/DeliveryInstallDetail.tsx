@@ -103,8 +103,14 @@ const DeliveryInstallDetail = () => {
 
   // Xử lý chọn ảnh
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setImages(Array.from(e.target.files));
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setImages((prev) => [...prev, ...newFiles]);
+    }
+    // Reset input để có thể chọn lại cùng file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -114,6 +120,18 @@ const DeliveryInstallDetail = () => {
 
   const handleRetakeImages = () => {
     setImages([]);
+    // Reset input trước khi mở lại
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleOpenCamera = () => {
+    // Reset trước khi mở
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     fileInputRef.current?.click();
   };
 
@@ -124,6 +142,18 @@ const DeliveryInstallDetail = () => {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+  // Reset form
+  const resetForm = () => {
+    setImages([]);
+    setSelectedGoods([]);
+    setSelectedDevices([]);
+    setNote("");
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   // Xử lý hoàn tất báo cáo
   const handleSubmitReport = async (e: React.FormEvent) => {
@@ -141,10 +171,7 @@ const DeliveryInstallDetail = () => {
       if (res.success) {
         notify.success("Hoàn tất thành công", { description: `Ticket ${id} đã được cập nhật kết quả.` });
         setShowReportForm(false);
-        setImages([]);
-        setSelectedGoods([]);
-        setSelectedDevices([]);
-        setNote("");
+        resetForm();
         await refetch();
       } else {
         notify.error("Hoàn tất thất bại", { description: res.message || "Không thể gửi kết quả." });
@@ -321,7 +348,10 @@ const DeliveryInstallDetail = () => {
         {showReportForm && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
             <form className="bg-background rounded-xl shadow-lg p-4 sm:p-6 w-full max-w-md md:max-w-lg space-y-4 relative max-h-[85vh] overflow-y-auto" onSubmit={handleSubmitReport}>
-              <button type="button" aria-label="Đóng" className="absolute top-3 right-3 text-muted-foreground hover:text-foreground" onClick={() => setShowReportForm(false)}>
+              <button type="button" aria-label="Đóng" className="absolute top-3 right-3 text-muted-foreground hover:text-foreground" onClick={() => {
+                setShowReportForm(false);
+                resetForm();
+              }}>
                 <X className="h-5 w-5" />
               </button>
               <h2 className="text-lg font-bold mb-2">Báo cáo kết quả thực hiện</h2>
@@ -332,19 +362,20 @@ const DeliveryInstallDetail = () => {
                   id="result-images"
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   multiple
                   onChange={handleImageChange}
                   className="hidden"
                 />
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button type="button" variant="outline" size="sm" onClick={handleOpenCamera}>
                     <Camera />
-                    Chụp ảnh
+                    {images.length === 0 ? "Chụp ảnh" : "Thêm ảnh"}
                   </Button>
                   {images.length > 0 && (
                     <>
-                      <Button type="button" variant="ghost" size="sm" onClick={handleRetakeImages}>Chụp lại</Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRetakeImages}>
+                        Xóa tất cả
+                      </Button>
                       <span className="text-sm text-muted-foreground">{images.length} ảnh đã chọn</span>
                     </>
                   )}
