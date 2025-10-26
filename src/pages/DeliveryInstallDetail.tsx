@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn, formatDate } from "@/lib/utils";
 import { toast as notify } from "@/components/ui/sonner";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 const Section = ({ title, icon, accentClass, rightSlot, children }: { title: string; icon?: React.ReactNode; accentClass?: string; rightSlot?: React.ReactNode; children: React.ReactNode }) => (
   <Card className="shadow-card">
@@ -39,6 +39,11 @@ const DeliveryInstallDetail = () => {
   const [images, setImages] = useState<File[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Debug: log images state changes
+  useEffect(() => {
+    console.log('[DeliveryInstall] images state changed:', images.length, 'files');
+  }, [images]);
 
   // Helper function để map trạng thái
   const getStatusInfo = (status: string) => {
@@ -103,14 +108,50 @@ const DeliveryInstallDetail = () => {
 
   // Xử lý chọn ảnh
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const newFiles = Array.from(files);
-      setImages((prev) => [...prev, ...newFiles]);
-    }
-    // Reset input để có thể chọn lại cùng file
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    try {
+      console.log('[DeliveryInstall] handleImageChange event triggered');
+      const files = e?.target?.files;
+      console.log('[DeliveryInstall] handleImageChange - files:', files);
+      
+      if (files && files.length > 0) {
+        const newFiles = Array.from(files);
+        console.log('[DeliveryInstall] handleImageChange - newFiles:', newFiles.length, 'files');
+        
+        // Validate and process each file
+        const validFiles: File[] = [];
+        newFiles.forEach((file, idx) => {
+          if (file && file.size > 0) {
+            console.log(`[DeliveryInstall] File ${idx}:`, {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              lastModified: new Date(file.lastModified).toISOString()
+            });
+            validFiles.push(file);
+          } else {
+            console.warn(`[DeliveryInstall] Invalid file at index ${idx}`);
+          }
+        });
+        
+        if (validFiles.length > 0) {
+          setImages((prev) => {
+            const updated = [...prev, ...validFiles];
+            console.log('[DeliveryInstall] Total images after update:', updated.length);
+            return updated;
+          });
+        } else {
+          console.warn('[DeliveryInstall] No valid files found');
+        }
+      } else {
+        console.warn('[DeliveryInstall] handleImageChange - no files selected or files is null');
+      }
+    } catch (error) {
+      console.error('[DeliveryInstall] Error in handleImageChange:', error);
+    } finally {
+      // Reset input để có thể chọn lại cùng file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -128,10 +169,13 @@ const DeliveryInstallDetail = () => {
   };
 
   const handleOpenCamera = () => {
+    console.log('[DeliveryInstall] handleOpenCamera called');
     // Reset trước khi mở
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+      console.log('[DeliveryInstall] fileInput reset');
     }
+    console.log('[DeliveryInstall] triggering file input click');
     fileInputRef.current?.click();
   };
 
@@ -466,7 +510,7 @@ const DeliveryInstallDetail = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button type="button" variant="outline" size="sm" onClick={handleOpenCamera}>
                     <Camera />
-                    {images.length === 0 ? "Chụp ảnh" : "Thêm ảnh"}
+                    {images.length === 0 ? "Chọn ảnh" : "Thêm ảnh"}
                   </Button>
                   {images.length > 0 && (
                     <>

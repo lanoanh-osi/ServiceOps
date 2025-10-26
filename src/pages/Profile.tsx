@@ -121,7 +121,7 @@ const Profile = () => {
               </CardContent>
             </Card>
             <div className="text-xs text-muted-foreground text-center">
-              Phiên bản: 1.0.0
+              Phiên bản: 1.0.2 - Cho phép upload ảnh từ thiết bị
             </div>
 
             {/* Achievements */}
