@@ -179,8 +179,8 @@ const DeliveryInstallDetail = () => {
     fileInputRef.current?.click();
   };
 
-  // Helper: resize image to reduce size
-  const resizeImage = (file: File, maxWidth = 1920, maxHeight = 1920, quality = 0.8) => new Promise<Blob>((resolve, reject) => {
+  // Helper: resize image to reduce size (reduce max size for mobile)
+  const resizeImage = (file: File, maxWidth = 1024, maxHeight = 1024, quality = 0.7) => new Promise<Blob>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -188,6 +188,8 @@ const DeliveryInstallDetail = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
+
+        console.log('[DeliveryInstall] Original image size:', width, 'x', height);
 
         // Calculate new dimensions
         if (width > height) {
@@ -202,6 +204,8 @@ const DeliveryInstallDetail = () => {
           }
         }
 
+        console.log('[DeliveryInstall] Resized image size:', width, 'x', height);
+
         canvas.width = width;
         canvas.height = height;
 
@@ -214,6 +218,7 @@ const DeliveryInstallDetail = () => {
         ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob((blob) => {
           if (blob) {
+            console.log('[DeliveryInstall] Resized blob size:', blob.size, 'bytes');
             resolve(blob);
           } else {
             reject(new Error('Failed to create blob'));
@@ -286,7 +291,29 @@ const DeliveryInstallDetail = () => {
 
     try {
       // Convert images to base64
-      const base64Images = await Promise.all(images.map((f) => fileToBase64(f)));
+      const base64Images = await Promise.all(images.map((f, idx) => {
+        console.log(`[DeliveryInstall] Converting image ${idx + 1}/${images.length}`, {
+          name: f.name,
+          size: f.size,
+          type: f.type
+        });
+        return fileToBase64(f);
+      }));
+      
+      // Log base64 sizes
+      base64Images.forEach((base64, idx) => {
+        const sizeInKB = (base64.length * 3) / 4 / 1024;
+        const sizeInMB = sizeInKB / 1024;
+        console.log(`[DeliveryInstall] Base64 ${idx + 1}: ${base64.length} chars (${sizeInKB.toFixed(2)} KB / ${sizeInMB.toFixed(2)} MB)`);
+        
+        // Warn if image is too large
+        if (sizeInMB > 1) {
+          console.warn(`[DeliveryInstall] Image ${idx + 1} is quite large: ${sizeInMB.toFixed(2)} MB`);
+        }
+      });
+      
+      const totalBase64Length = base64Images.reduce((sum, b) => sum + b.length, 0);
+      const totalSizeInMB = (totalBase64Length * 3) / 4 / 1024 / 1024;
       
       console.log('[DeliveryInstall] Submitting report:', {
         ticketId: id,
@@ -294,9 +321,13 @@ const DeliveryInstallDetail = () => {
         productCodesCount: selectedGoods.length,
         serialsCount: selectedDevices.length,
         note: note || '(empty)',
-        base64ImageLength: base64Images[0]?.length || 0
+        totalBase64Length,
+        totalSizeMB: totalSizeInMB.toFixed(2)
       });
 
+      console.log('[DeliveryInstall] Sending request to API...');
+      
+      const requestStartTime = Date.now();
       const res = await completeDeliveryInstallTicket({
         ticketId: id,
         note,
@@ -304,20 +335,38 @@ const DeliveryInstallDetail = () => {
         serials: selectedDevices,
         base64Images,
       });
-
-      console.log('[DeliveryInstall] API Response:', res);
+      
+      const requestDuration = Date.now() - requestStartTime;
+      console.log(`[DeliveryInstall] API Response received in ${requestDuration}ms:`, res);
 
       if (res.success) {
+        console.log('[DeliveryInstall] Success! Refreshing data...');
         notify.success("Hoàn tất thành công", { description: `Ticket ${id} đã được cập nhật kết quả.` });
         setShowReportForm(false);
         resetForm();
         await refetch();
       } else {
+        console.error('[DeliveryInstall] API returned error:', res);
         notify.error("Hoàn tất thất bại", { description: res.message || "Không thể gửi kết quả." });
       }
     } catch (err: any) {
       console.error('[DeliveryInstall] Error submitting report:', err);
-      const errorMessage = err?.response?.data?.message || err?.message || "Lỗi không xác định";
+      console.error('[DeliveryInstall] Error details:', {
+        message: err?.message,
+        stack: err?.stack,
+        response: err?.response,
+        body: err?.response?.data
+      });
+      
+      let errorMessage = "Lỗi không xác định";
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       notify.error("Hoàn tất thất bại", { description: errorMessage });
     }
   };
