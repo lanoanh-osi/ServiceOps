@@ -120,6 +120,9 @@ const Profile = () => {
                   </Button>
               </CardContent>
             </Card>
+            <div className="text-xs text-muted-foreground text-center">
+              Phiên bản: 1.0.0
+            </div>
 
             {/* Achievements */}
             {/* <Card className="shadow-card">
