@@ -6,7 +6,7 @@ import { acceptTicket, getTicketDetail, TicketDetail as TicketDetailType, fetchM
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, AlarmClock, Building2, Mail, MapPin, Phone, Wrench, Camera, X, CheckCircle, PencilLine, PlayCircle } from "lucide-react";
+import { ArrowLeft, AlarmClock, Building2, Mail, MapPin, Phone, Wrench, Camera, X, CheckCircle, PencilLine, PlayCircle, Package, Circle, Info } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import TicketActions from "@/components/Dashboard/TicketActions";
 import { useRef, useState } from "react";
@@ -69,6 +69,22 @@ const MaintenanceDetail = () => {
   const isInProgress = normalizedStatus === "in-progress";
   const isCompleted = normalizedStatus === "completed";
   const isReceived = normalizedStatus === "received";
+
+  // Helper function để map trạng thái
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case "assigned":
+        return { label: "Đã phân công", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <PlayCircle className="h-4 w-4" /> };
+      case "received":
+        return { label: "Đã tiếp nhận", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <PlayCircle className="h-4 w-4" /> };
+      case "in-progress":
+        return { label: "Đang thực hiện", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <PlayCircle className="h-4 w-4" /> };
+      case "completed":
+        return { label: "Đã hoàn thành", color: "bg-green-100 text-green-700 border-green-200", icon: <CheckCircle className="h-4 w-4" /> };
+      default:
+        return { label: "Không xác định", color: "bg-gray-100 text-gray-700 border-gray-200", icon: <Info className="h-4 w-4" /> };
+    }
+  };
 
   // Unified status display mapping: prefer API-provided display label; fallback to our mapping
   const statusDisplay = (() => {
@@ -136,13 +152,81 @@ const MaintenanceDetail = () => {
     setOpenFirst(true);
   };
 
+  // Helper: resize image to reduce size (optimize for mobile)
+  const resizeImage = (file: File, maxWidth = 1024, maxHeight = 1024, quality = 0.7) => new Promise<Blob>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        console.log('[MaintenanceDetail] Original image size:', width, 'x', height);
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        console.log('[MaintenanceDetail] Resized image size:', width, 'x', height);
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log('[MaintenanceDetail] Resized blob size:', blob.size, 'bytes');
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   async function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    try {
+      // Resize image to reduce payload size
+      const resizedBlob = await resizeImage(file);
+      const resizedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
+
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+        reader.onerror = reject;
+        reader.readAsDataURL(resizedFile);
+      });
+    } catch (err) {
+      console.error('[MaintenanceDetail] Error resizing image:', err);
+      // Fallback to original file if resize fails
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1] || "");
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
   }
   async function getAddressString(): Promise<string> {
     try {
@@ -441,16 +525,32 @@ const MaintenanceDetail = () => {
             </div>
           </DialogContent>
         </Dialog>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            {id && (
-              <div className="px-3 py-2 rounded-md text-sm font-mono bg-blue-50 text-blue-700 border border-blue-200 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]">#{id}</div>
-            )}
+        {/* Ticket ID */}
+        {id && (
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-full text-center px-3 py-2 rounded-md text-sm font-mono bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]">
+              #{id}
+            </div>
           </div>
-          {statusDisplay ? (
-            <Badge variant="secondary" className="shrink-0">{statusDisplay}</Badge>
-          ) : null}
-        </div>
+        )}
+        
+        {/* Classification and Status Pills */}
+        {data && normalizedStatus && (
+          <div className="flex justify-between gap-3 mb-4">
+            {/* Classification Pill */}
+            {data.maintenanceExtra?.ticketCategory && (
+              <div className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-medium border bg-purple-100 text-purple-700 border-purple-200">
+                <Package className="h-4 w-4" />
+                <span>{data.maintenanceExtra.ticketCategory}</span>
+              </div>
+            )}
+            {/* Status Pill */}
+            <div className={`flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-medium border ${getStatusInfo(normalizedStatus).color}`}>
+              {getStatusInfo(normalizedStatus).icon}
+              <span>{statusDisplay}</span>
+            </div>
+          </div>
+        )}
         {isLoading && (
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
@@ -511,7 +611,7 @@ const MaintenanceDetail = () => {
             {!isAssigned && (
             <>
             <Section title="First Response" rightSlot={<button onClick={openFirstResponse} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><PencilLine className="h-4 w-4" />Cập nhật</button>}>
-              {data.firstResponse?.time || data.firstResponse?.note || (data.firstResponse?.imageUrls && data.firstResponse.imageUrls.length > 0) ? (
+              {data.firstResponse?.time != "undefined" || data.firstResponse?.note != "undefined" ? (
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-sm">
                   <div className="space-y-2">
                     {data.firstResponse?.time && <div><span className="text-muted-foreground">Thời gian:</span> {formatDateTime(data.firstResponse.time)}</div>}
@@ -522,30 +622,28 @@ const MaintenanceDetail = () => {
                   ) : null}
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
-                  <Button variant="outline" size="sm" onClick={() => setOpenFirst(true)}>Ghi nhận</Button>
+                <div className="flex items-center">
+                  <Button variant="outline" size="sm" onClick={() => setOpenFirst(true)} className="w-full">Ghi nhận</Button>
                 </div>
               )}
             </Section>
 
             <Section title="Supplier Instruction" rightSlot={<button onClick={openSupplierInstruction} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><PencilLine className="h-4 w-4" />Cập nhật</button>}>
-              {data.supplierInstruction?.contactTime || data.supplierInstruction?.responseTime || data.supplierInstruction?.note ? (
+              {data.supplierInstruction?.contactTime != "undefined" || data.supplierInstruction?.responseTime != "undefined" || data.supplierInstruction?.note != "undefined" ? (
                 <div className="text-sm space-y-1">
                   {data.supplierInstruction?.contactTime && <div><span className="text-muted-foreground">Thời gian liên hệ:</span> {formatDateTime(data.supplierInstruction.contactTime)}</div>}
                   {data.supplierInstruction?.responseTime && <div><span className="text-muted-foreground">Thời gian phản hồi:</span> {formatDateTime(data.supplierInstruction.responseTime)}</div>}
                   {data.supplierInstruction?.note && <div><span className="text-muted-foreground">Nội dung:</span> {data.supplierInstruction.note}</div>}
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
-                  <Button variant="outline" size="sm" onClick={() => setOpenSupplier(true)}>Ghi nhận</Button>
+                <div className="flex items-center">
+                  <Button variant="outline" size="sm" onClick={() => setOpenSupplier(true)} className="w-full">Ghi nhận</Button>
                 </div>
               )}
             </Section>
 
-            <Section title="Bắt đầu thực hiện" icon={<PlayCircle className="h-5 w-5" />} accentClass="text-primary">
-              {(hasStartTime || hasStartLocation || hasStartImage) ? (
+            {(hasStartTime || hasStartLocation || hasStartImage) ? (
+              <Section title="Bắt đầu thực hiện" icon={<PlayCircle className="h-5 w-5" />} accentClass="text-primary">
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-sm">
                   <div className="space-y-2">
                     {hasStartTime && <div><span className="text-muted-foreground">Thời gian:</span> {formatDateTime(startTimeVal)}</div>}
@@ -555,16 +653,19 @@ const MaintenanceDetail = () => {
                     <img src={validStartImage as string} alt="start" className="h-20 w-20 object-cover rounded border justify-self-end" />
                   ) : null}
                 </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
-                  <Button variant="outline" size="sm" onClick={openStartDialog}>Bắt đầu thực hiện</Button>
-                </div>
-              )}
-            </Section>
+              </Section>
+            ) : (
+              // <Section title="Bắt đầu thực hiện" icon={<PlayCircle className="h-5 w-5" />} accentClass="text-primary">
+              //   <div className="flex items-center justify-between">
+              //     <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
+              //     <Button variant="outline" size="sm" onClick={openStartDialog}>Bắt đầu thực hiện</Button>
+              //   </div>
+              // </Section>
+              <div></div>
+            )}
 
-            <Section title="Kết quả thực hiện" icon={<CheckCircle className="h-5 w-5" />} accentClass="text-emerald-600">
-              {(data.resultRecord?.time || data.maintenanceExtra?.completeLocation || (data.resultRecord?.imageUrls && data.resultRecord.imageUrls.length > 0)) ? (
+            {(data.resultRecord?.time != "undefined" || data.maintenanceExtra?.completeLocation != "undefined") ? (
+              <Section title="Kết quả thực hiện" icon={<CheckCircle className="h-5 w-5" />} accentClass="text-emerald-600">
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3 text-sm">
                   <div className="space-y-2">
                     {data.resultRecord?.time && <div><span className="text-muted-foreground">Thời gian:</span> {formatDateTime(data.resultRecord.time)}</div>}
@@ -574,15 +675,18 @@ const MaintenanceDetail = () => {
                     <img src={data.resultRecord.imageUrls[0]} alt="result" className="h-20 w-20 object-cover rounded border justify-self-end" />
                   ) : null}
                 </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
-                  <Button size="sm" onClick={openResultDialog}>
-                    Hoàn tất Ticket
-                  </Button>
-                </div>
-              )}
-            </Section>
+              </Section>
+            ) : (
+              // <Section title="Kết quả thực hiện" icon={<CheckCircle className="h-5 w-5" />} accentClass="text-emerald-600">
+              //   <div className="flex items-center justify-between">
+              //     <span className="text-sm text-muted-foreground">Chưa có thông tin</span>
+              //     <Button size="sm" onClick={openResultDialog}>
+              //       Hoàn tất Ticket
+              //     </Button>
+              //   </div>
+              // </Section>
+              <div></div>
+            )}
             </>
             )}
 
@@ -606,12 +710,49 @@ const MaintenanceDetail = () => {
               <Input type="datetime-local" value={firstTime} onChange={(e) => setFirstTime(e.target.value)} />
               <Textarea placeholder="Nhập nội dung ghi nhận..." value={firstNote} onChange={(e) => setFirstNote(e.target.value)} />
             </div>
+            {/* Capture images */}
             <div>
-              <input ref={firstInputRef} id="first-images" type="file" accept="image/*" capture="environment" multiple onChange={(e) => setFirstImages(e.target.files ? Array.from(e.target.files) : [])} className="hidden" />
-              <Button variant="outline" size="sm" onClick={() => firstInputRef.current?.click()}>
-                <Camera className="mr-2" /> Chụp ảnh
-              </Button>
-              {firstImages.length > 0 && <div className="text-xs text-muted-foreground mt-1">{firstImages.length} ảnh</div>}
+              <input 
+                ref={firstInputRef} 
+                id="first-images" 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                multiple 
+                onChange={(e) => {
+                  const files = e.target.files ? Array.from(e.target.files) : [];
+                  setFirstImages(files);
+                }} 
+                className="hidden" 
+              />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => firstInputRef.current?.click()}>
+                  <Camera className="mr-2" /> Chụp ảnh
+                </Button>
+                {firstImages.length > 0 && (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => { setFirstImages([]); firstInputRef.current?.click(); }}>Chụp lại</Button>
+                    <span className="text-sm text-muted-foreground">{firstImages.length} ảnh đã chọn</span>
+                  </>
+                )}
+              </div>
+              {firstImages.length > 0 && (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {firstImages.map((img, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={URL.createObjectURL(img)} alt="preview" className="h-16 w-16 object-cover rounded border" />
+                      <button
+                        type="button"
+                        onClick={() => setFirstImages((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-black/70 text-white text-xs"
+                        aria-label="Xóa ảnh"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setOpenFirst(false)}>Hủy</Button>
