@@ -135,13 +135,87 @@ const DeliveryInstallDetail = () => {
     fileInputRef.current?.click();
   };
 
-  // Helper: convert File to base64 (no data URL prefix trimming; backend can accept full data URL or raw base64 depending on implementation)
-  const fileToBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+  // Helper: resize image to reduce size
+  const resizeImage = (file: File, maxWidth = 1920, maxHeight = 1920, quality = 0.8) => new Promise<Blob>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+  // Helper: convert File to base64 string (remove data URL prefix)
+  const fileToBase64 = async (file: File): Promise<string> => {
+    try {
+      // Resize image to reduce payload size
+      const resizedBlob = await resizeImage(file);
+      const resizedFile = new File([resizedBlob], file.name, { type: 'image/jpeg' });
+
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          // Remove data URL prefix and return only base64 string (same as MaintenanceDetail)
+          const base64String = result.includes(',') ? result.split(',')[1] : result;
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(resizedFile);
+      });
+    } catch (err) {
+      console.error('[DeliveryInstall] Error resizing image:', err);
+      // Fallback to original file if resize fails
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          const base64String = result.includes(',') ? result.split(',')[1] : result;
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+  };
 
   // Reset form
   const resetForm = () => {
@@ -159,8 +233,26 @@ const DeliveryInstallDetail = () => {
   const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
+    
+    // Validate: Phải có ít nhất 1 ảnh
+    if (images.length === 0) {
+      notify.error("Vui lòng chụp ít nhất 1 ảnh kết quả");
+      return;
+    }
+
     try {
+      // Convert images to base64
       const base64Images = await Promise.all(images.map((f) => fileToBase64(f)));
+      
+      console.log('[DeliveryInstall] Submitting report:', {
+        ticketId: id,
+        imagesCount: images.length,
+        productCodesCount: selectedGoods.length,
+        serialsCount: selectedDevices.length,
+        note: note || '(empty)',
+        base64ImageLength: base64Images[0]?.length || 0
+      });
+
       const res = await completeDeliveryInstallTicket({
         ticketId: id,
         note,
@@ -168,6 +260,9 @@ const DeliveryInstallDetail = () => {
         serials: selectedDevices,
         base64Images,
       });
+
+      console.log('[DeliveryInstall] API Response:', res);
+
       if (res.success) {
         notify.success("Hoàn tất thành công", { description: `Ticket ${id} đã được cập nhật kết quả.` });
         setShowReportForm(false);
@@ -177,7 +272,9 @@ const DeliveryInstallDetail = () => {
         notify.error("Hoàn tất thất bại", { description: res.message || "Không thể gửi kết quả." });
       }
     } catch (err: any) {
-      notify.error("Hoàn tất thất bại", { description: err?.message || "Lỗi không xác định" });
+      console.error('[DeliveryInstall] Error submitting report:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || "Lỗi không xác định";
+      notify.error("Hoàn tất thất bại", { description: errorMessage });
     }
   };
 
