@@ -88,7 +88,17 @@ const Index = () => {
               </>
             ) : (
               <>
-                <RatingStatsCard title="Đánh giá TB" value={`${performanceData?.avg_customer_rating ?? 0}`} rating={performanceData?.avg_customer_rating ?? 0} />
+                {(() => {
+                  const avg = Number(performanceData?.avg_customer_rating ?? 0);
+                  const oneDecimal = Math.round(avg * 10) / 10; // e.g. 3.33 -> 3.3
+                  return (
+                    <RatingStatsCard
+                      title="Đánh giá TB"
+                      value={oneDecimal.toFixed(1)}
+                      rating={oneDecimal}
+                    />
+                  );
+                })()}
                 <DonutStatsCard title="Phản hồi nhanh" percentage={performanceData?.quick_response_rate ?? 0} />
               </>
             )}

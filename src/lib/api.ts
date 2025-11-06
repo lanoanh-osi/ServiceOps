@@ -1208,6 +1208,14 @@ export async function fetchDeliveryInstallTicketDetail(ticketId: string): Promis
         goodsInfo,
         deviceInfo,
         notes: d.orderDetail?.description || d.description,
+        // Map completion info (if provided by API) to a unified activityResult field
+        activityResult: (d as any)?.finished_time || (d as any)?.finished_note || (d as any)?.finished_image
+            ? {
+                  time: (d as any).finished_time,
+                  note: (d as any).finished_note,
+                  imageUrls: (d as any).finished_image ? [ (d as any).finished_image ] : [],
+              }
+            : undefined,
     };
 
     // Fallback: if critical fields are missing, try merging from the list endpoint

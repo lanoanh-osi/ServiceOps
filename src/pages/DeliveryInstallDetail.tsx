@@ -6,7 +6,7 @@ import { TicketDetail as TicketDetailType, fetchDeliveryInstallTicketDetail, acc
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { AlarmClock, Building2, Mail, MapPin, Phone, PlayCircle, CheckCircle, Camera, X, Package, Receipt, Wrench, Tag, Info, User } from "lucide-react";
+import { AlarmClock, Building2, Mail, MapPin, Phone, PlayCircle, CheckCircle, Camera, X, Package, Receipt, Wrench, Tag, Info, User, Image as ImageIcon, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -38,6 +38,8 @@ const DeliveryInstallDetail = () => {
   const [note, setNote] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showFinishedImage, setShowFinishedImage] = useState(false);
+  const [finishedImageUrl, setFinishedImageUrl] = useState<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Debug: log images state changes
@@ -400,11 +402,62 @@ const DeliveryInstallDetail = () => {
           </div>
         )}
         {data && isCompleted && (
-          <div className="mt-4 rounded-2xl border-2 border-primary/30 bg-primary/5 px-4 py-5 sm:px-6 sm:py-6 flex items-center justify-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <CheckCircle className="h-6 w-6" />
+          <div className="mt-4 rounded-2xl border border-primary/30 bg-gradient-to-r from-emerald-50 to-primary/10 px-4 py-5 sm:px-6 sm:py-6 shadow-sm">
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-inner">
+                  <CheckCircle className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="text-lg sm:text-xl font-semibold tracking-wide text-primary">ĐÃ HOÀN THÀNH</div>
+                  {data.statusDisplayLabel && (
+                    <div className="text-xs text-muted-foreground">{data.statusDisplayLabel}</div>
+                  )}
+                </div>
+              </div>
+
+              {(data.activityResult?.time || (data.activityResult?.imageUrls && data.activityResult.imageUrls.length > 0) || data.activityResult?.note) && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex gap-4">
+                    {data.activityResult?.time && (
+                      <div className="flex-1 rounded-xl border bg-white/70 p-3 backdrop-blur">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                          <AlarmClock className="h-4 w-4" /> Thời gian
+                        </div>
+                        <div className="mt-1 text-sm font-semibold">{formatDate(data.activityResult.time)}</div>
+                      </div>
+                    )}
+
+                    {data.activityResult?.note && (
+                      <div className="flex-1 rounded-xl border bg-white/70 p-3 backdrop-blur">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                          <StickyNote className="h-4 w-4" /> Ghi chú
+                        </div>
+                        <div className="mt-1 text-sm font-medium text-foreground whitespace-pre-wrap break-words">
+                          {data.activityResult.note}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {data.activityResult?.imageUrls && data.activityResult.imageUrls[0] && (
+                    <div className="rounded-xl border bg-white/70 p-3 backdrop-blur">
+                      <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
+                        <ImageIcon className="h-4 w-4" /> Hình ảnh
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setFinishedImageUrl(data.activityResult?.imageUrls?.[0]); setShowFinishedImage(true); }}
+                        className="mt-2 block w-full overflow-hidden rounded-lg border hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        aria-label="Xem hình ảnh hoàn thành"
+                      >
+                        <img src={data.activityResult.imageUrls[0]} alt="Hình ảnh hoàn thành" className="h-28 w-full object-cover" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="text-lg sm:text-xl font-semibold tracking-wide text-primary">ĐÃ HOÀN THÀNH</div>
           </div>
         )}
 
@@ -655,6 +708,20 @@ const DeliveryInstallDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Finished Image Preview */}
+      <Dialog open={showFinishedImage} onOpenChange={setShowFinishedImage}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-center">Hình ảnh hoàn thành</DialogTitle>
+          </DialogHeader>
+          {finishedImageUrl && (
+            <div className="w-full">
+              <img src={finishedImageUrl} alt="Hình ảnh hoàn thành" className="w-full h-auto rounded-lg border" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Success Modal */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
