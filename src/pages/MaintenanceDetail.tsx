@@ -701,13 +701,15 @@ const MaintenanceDetail = () => {
 
       {/* Dialogs */}
       <Dialog open={openFirst} onOpenChange={setOpenFirst}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Ghi nhận First Response</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-2">
-              <Input type="datetime-local" value={firstTime} onChange={(e) => setFirstTime(e.target.value)} />
+            <div className="grid grid-cols-1 gap-2 min-w-0">
+              <div className="min-w-0">
+                <Input type="datetime-local" value={firstTime} onChange={(e) => setFirstTime(e.target.value)} className="w-full max-w-full min-w-0 text-left" />
+              </div>
               <Textarea placeholder="Nhập nội dung ghi nhận..." value={firstNote} onChange={(e) => setFirstNote(e.target.value)} />
             </div>
             {/* Capture images */}
@@ -778,18 +780,18 @@ const MaintenanceDetail = () => {
       </Dialog>
 
       <Dialog open={openSupplier} onOpenChange={setOpenSupplier}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Ghi nhận Supplier Instruction</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <label className="block text-sm mb-1">Ngày liên hệ</label>
-              <Input type="datetime-local" value={supplierContactTime} onChange={(e) => setSupplierContactTime(e.target.value)} />
+              <Input type="datetime-local" value={supplierContactTime} onChange={(e) => setSupplierContactTime(e.target.value)} className="w-full max-w-full min-w-0 text-left" />
             </div>
             <div>
               <label className="block text-sm mb-1">Ngày phản hồi</label>
-              <Input type="datetime-local" value={supplierResponseTime} onChange={(e) => setSupplierResponseTime(e.target.value)} />
+              <Input type="datetime-local" value={supplierResponseTime} onChange={(e) => setSupplierResponseTime(e.target.value)} className="w-full max-w-full min-w-0 text-left" />
             </div>
             <Textarea placeholder="Nội dung phản hồi..." value={supplierNote} onChange={(e) => setSupplierNote(e.target.value)} />
             <div className="flex justify-end gap-2">
@@ -815,7 +817,7 @@ const MaintenanceDetail = () => {
       </Dialog>
 
       <Dialog open={openStart} onOpenChange={setOpenStart}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Ghi nhận bắt đầu thực hiện</DialogTitle>
           </DialogHeader>
@@ -870,7 +872,7 @@ const MaintenanceDetail = () => {
       </Dialog>
 
       <Dialog open={openResult} onOpenChange={setOpenResult}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader>
             <DialogTitle>Ghi nhận kết quả</DialogTitle>
           </DialogHeader>
