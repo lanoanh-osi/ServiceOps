@@ -1161,9 +1161,14 @@ export async function fetchDeliveryInstallTicketDetail(ticketId: string): Promis
 
     const d = detailRaw || ({} as ExternalDeliveryDetail);
 
+    // Filter out products with category "Thiết bị"
     const goodsInfo = Array.isArray(d.products)
         ? d.products
             .filter((p) => p && (p.name || p.sku))
+            .filter((p) => {
+                const cat = String((p as any)?.category || "").toLowerCase();
+                return !(cat.includes("thiết bị") || cat.includes("thiet bi"));
+            })
             .map((p) => ({ sku: p.sku, name: p.name || "Hàng hóa", quantity: Number(p.quantity || 1) }))
         : [];
     const deviceInfo = Array.isArray(d.devices)
@@ -1192,8 +1197,18 @@ export async function fetchDeliveryInstallTicketDetail(ticketId: string): Promis
         },
         orderInfo: {
             orderCode: d.orderDetail?.orderCode || d.order_id,
-            itemsCount: (d.products || []).length || undefined,
-            secretCodes: (d.products || []).map((p) => ({ code: p.sku || "", name: p.name || "Hàng hóa", quantity: Number(p.quantity || 1) })),
+            itemsCount: Array.isArray(d.products)
+                ? d.products.filter((p) => {
+                    const cat = String((p as any)?.category || "").toLowerCase();
+                    return !(cat.includes("thiết bị") || cat.includes("thiet bi"));
+                  }).length || undefined
+                : undefined,
+            secretCodes: (Array.isArray(d.products) ? d.products : [])
+                .filter((p) => {
+                    const cat = String((p as any)?.category || "").toLowerCase();
+                    return !(cat.includes("thiết bị") || cat.includes("thiet bi"));
+                })
+                .map((p) => ({ code: p.sku || "", name: p.name || "Hàng hóa", quantity: Number(p.quantity || 1) })),
             customerName: d.orderDetail?.customerName,
             totalAmount: d.orderDetail?.totalAmount,
             orderDate: d.orderDetail?.orderDate,
