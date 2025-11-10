@@ -4,8 +4,9 @@ import BottomNav from "@/components/Layout/BottomNav";
 import TicketList from "@/components/Dashboard/TicketList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import React from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import CreateEmergencyMaintenanceForm from "@/components/CreateEmergencyMaintenanceForm";
 import { getTickets } from "@/lib/api";
 
@@ -16,6 +17,7 @@ const Maintenance = () => {
     "in-progress": 0,
     completed: 0,
   });
+  const [completedSearchQuery, setCompletedSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -103,7 +105,31 @@ const Maintenance = () => {
             <TicketList type="maintenance" status="in-progress" />
           </TabsContent>
           <TabsContent value="completed" className="mt-4">
-            <TicketList type="maintenance" status="completed" />
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm theo serial hoặc dòng sản phẩm..."
+                  value={completedSearchQuery}
+                  onChange={(e) => setCompletedSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {completedSearchQuery && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-transparent"
+                    onClick={() => setCompletedSearchQuery("")}
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <TicketList type="maintenance" status="completed" searchQuery={completedSearchQuery} />
           </TabsContent>
         </Tabs>
       </main>

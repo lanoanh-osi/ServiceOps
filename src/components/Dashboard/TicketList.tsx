@@ -49,9 +49,10 @@ const getStatusLabel = (status: Ticket['status']) => {
 type Props = {
   type?: TicketType;
   status?: TicketStatus;
+  searchQuery?: string; // Optional search query for filtering by customer name
 };
 
-const TicketList = ({ type, status }: Props) => {
+const TicketList = ({ type, status, searchQuery }: Props) => {
   const navigate = useNavigate();
   const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["tickets", { type, status }],
@@ -69,7 +70,33 @@ const TicketList = ({ type, status }: Props) => {
       return totalLoaded < total ? allPages.length + 1 : undefined;
     },
   });
-  const list = ((data?.pages || []).flatMap((p) => p?.items || []) || []) as Ticket[];
+  const allTickets = ((data?.pages || []).flatMap((p) => p?.items || []) || []) as Ticket[];
+  
+  // Filter tickets based on searchQuery
+  // For maintenance tickets: search by device serial, device model, or customer name
+  // For sales tickets: search by activity name (title) or description
+  // For delivery tickets: search by customer name
+  const list = searchQuery?.trim()
+    ? allTickets.filter((ticket) => {
+        const query = searchQuery.toLowerCase().trim();
+        if (type === "maintenance") {
+          // For maintenance tickets, search in device serial, device model, and customer name
+          const matchesSerial = (ticket as any).deviceSerial?.toLowerCase().includes(query);
+          const matchesModel = (ticket as any).deviceModel?.toLowerCase().includes(query);
+          const matchesCustomer = ticket.customer?.toLowerCase().includes(query);
+          const matchesTitle = ticket.title?.toLowerCase().includes(query);
+          return matchesSerial || matchesModel || matchesCustomer || matchesTitle;
+        } else if (type === "sales") {
+          // For sales tickets, search in activity name (title) and description
+          const matchesTitle = ticket.title?.toLowerCase().includes(query);
+          const matchesDescription = ticket.description?.toLowerCase().includes(query);
+          return matchesTitle || matchesDescription;
+        } else {
+          // For delivery tickets, search by customer name
+          return ticket.customer?.toLowerCase().includes(query);
+        }
+      })
+    : allTickets;
   return (
     <div className="space-y-4">
       {isLoading && (
@@ -83,7 +110,15 @@ const TicketList = ({ type, status }: Props) => {
         <div className="text-sm text-red-600">Không tải được danh sách ticket.</div>
       )}
       {!isLoading && !isError && list.length === 0 && (
-        <div className="text-sm text-muted-foreground">Không có ticket phù hợp.</div>
+        <div className="text-sm text-muted-foreground">
+          {searchQuery?.trim() 
+            ? type === "maintenance"
+              ? `Không tìm thấy ticket nào với serial/model/dòng sản phẩm "${searchQuery}"`
+              : type === "sales"
+              ? `Không tìm thấy ticket nào với tên hoạt động "${searchQuery}"`
+              : `Không tìm thấy ticket nào với tên khách hàng "${searchQuery}"`
+            : "Không có ticket phù hợp."}
+        </div>
       )}
       {list.map((ticket) => (
         <div

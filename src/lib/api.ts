@@ -215,6 +215,8 @@ export interface TicketSummary {
     subTypeLabel?: string; // optional label for specialized categories (e.g., activity type)
     statusDisplayLabel?: string; // external status label for UI (e.g., "Chưa bắt đầu")
     description?: string; // optional description for activity/support tickets
+    deviceModel?: string; // optional device model for maintenance tickets
+    deviceSerial?: string; // optional device serial for maintenance tickets
 }
 
 export interface TicketDetail extends TicketSummary {
@@ -1360,6 +1362,8 @@ export async function fetchMaintenanceTickets(filterStatus?: TicketStatus): Prom
         status: mapExternalStatusToAppStatus(it.status),
         statusDisplayLabel: mapExternalStatusToDisplay(it.status),
         subTypeLabel: it.type,
+        deviceModel: it.device_model,
+        deviceSerial: it.device_serial,
     }));
 
     return { success: true, status: 200, data: { items, total: items.length } };
