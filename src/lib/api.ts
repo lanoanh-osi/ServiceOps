@@ -1764,6 +1764,11 @@ type ExternalActivityDetail = {
     activity_name?: string; // Hỗ trợ sử dụng sản phẩm
     type?: string; // alt key for activity_type
     name?: string; // alt key for activity_name
+    activity_info?: {
+        type?: string;
+        name?: string;
+        description?: string;
+    };
     title?: string;
     description?: string;
     related_order?: { order_id?: string; order_link?: string };
@@ -1795,34 +1800,61 @@ export async function fetchActivitySupportTicketDetail(ticketId: string): Promis
     }
 
     const detailSource = d || ({} as ExternalActivityDetail);
-    const statusLabel = detailSource.status?.current;
-    const subject = detailSource.activity_name || detailSource.name || detailSource.title || detailSource.activity_type || "Hoạt động & Hỗ trợ";
-    const customerName = detailSource.customer_info?.company_name || "Khách hàng";
-    const phone = detailSource.customer_info?.phone;
-    const email = detailSource.customer_info?.email;
-    const contact = detailSource.customer_info?.contact_name;
+    const sanitize = (value: any): string | undefined => {
+        if (!value) return undefined;
+        const str = String(value).trim();
+        if (!str || str.toLowerCase() === "undefined" || str.toLowerCase() === "null") return undefined;
+        return str;
+    };
+
+    const activityInfo = detailSource.activity_info || ({} as any);
+    const statusRaw = detailSource.status || {};
+    const customerInfoRaw = detailSource.customer_info || {};
+    const relatedOrderRaw = detailSource.related_order || {};
+    const resultRaw = detailSource.result || {};
+    const timestampsRaw = detailSource.timestamps || {};
+
+    const activityType = sanitize(activityInfo.type) || sanitize(detailSource.activity_type) || sanitize(detailSource.type);
+    const subject =
+        sanitize(activityInfo.name) ||
+        sanitize(detailSource.activity_name) ||
+        sanitize(detailSource.name) ||
+        sanitize(detailSource.title) ||
+        activityType ||
+        "Hoạt động & Hỗ trợ";
+    const description = sanitize(activityInfo.description) || sanitize(detailSource.description);
+    const customerName = sanitize(customerInfoRaw.company_name) || "Khách hàng";
+    const contactName = sanitize(customerInfoRaw.contact_name);
+    const phone = sanitize(customerInfoRaw.phone);
+    const email = sanitize(customerInfoRaw.email);
+    const orderId = sanitize(relatedOrderRaw.order_id);
+    const statusLabel = sanitize(statusRaw.current);
+    const deadline = sanitize(statusRaw.deadline) || sanitize(timestampsRaw.created_at) || new Date().toISOString();
+    const completedAt = sanitize(statusRaw.completed_at);
+    const resultNotes = sanitize(resultRaw.notes);
+    const resultSummary = sanitize(resultRaw.summary);
 
     const detail: TicketDetail = {
         id: detailSource.ticket_id || ticketId,
         type: "sales",
         title: subject,
-        projectCode: detailSource.related_order?.order_id,
+        projectCode: orderId,
         customer: customerName,
         address: "",
-        deadline: detailSource.status?.deadline || detailSource.timestamps?.created_at || new Date().toISOString(),
+        deadline,
         status: mapExternalStatusToAppStatus(statusLabel),
         statusDisplayLabel: mapExternalStatusToDisplay(statusLabel),
-        subTypeLabel: detailSource.activity_type || detailSource.type,
-        description: detailSource.description,
+        subTypeLabel: activityType,
+        description,
         customerInfo: {
             name: customerName,
             address: "",
             contactPhone: phone,
             contactEmail: email,
         },
-        orderInfo: detailSource.related_order?.order_id
+        orderInfo: orderId
             ? {
-                  orderCode: detailSource.related_order.order_id,
+                  orderCode: orderId,
                   itemsCount: undefined,
                   secretCodes: [],
                   description: undefined,
@@ -1830,35 +1862,57 @@ export async function fetchActivitySupportTicketDetail(ticketId: string): Promis
             : undefined,
         activityInfo: {
             subject,
-            description: detailSource.description,
-            owner: detailSource.customer_info?.contact_name,
-            startTime: detailSource.timestamps?.created_at,
-            endTime: detailSource.status?.completed_at,
+            description,
+            owner: contactName,
+            startTime: sanitize(timestampsRaw.created_at),
+            endTime: completedAt,
         },
-        activityResult: detailSource.result?.notes
-            ? { time: detailSource.status?.completed_at, note: detailSource.result?.notes, imageUrls: [] }
-            : { time: detailSource.status?.completed_at, note: undefined, imageUrls: [] },
-        notes: detailSource.result?.summary,
+        activityResult: resultNotes
+            ? { time: completedAt, note: resultNotes, imageUrls: [] }
+            : { time: completedAt, note: undefined, imageUrls: [] },
+        notes: resultSummary,
     };
 
     return { success: true, status: 200, data: detail };
 }
 
 // Update Activity & Support main information
+// Payload format giống CreateActivitySupportTicketInput để match với form tạo ticket
 export async function updateActivitySupportInfo(
     ticketId: string,
     payload: {
-        subject?: string;
+        name?: string; // Tên hoạt động (thay vì subject)
         description?: string;
-        owner?: string;
-        deadline?: string;
-        customer?: string;
-        contactName?: string;
-        email?: string;
-        phone?: string;
+        customer_name?: string; // Khách hàng (thay vì customer)
+        customer_record_id?: string; // Record ID của khách hàng
+        type?: string; // Loại hoạt động
+        deadline?: string; // Hạn hoàn thành (ISO string)
+        status?: string; // Trạng thái: "Chưa bắt đầu" hoặc "Đã hoàn thành"
+        complete_date?: string; // Ngày hoàn thành (ISO string)
+        note?: string; // Ghi chú
+        result?: string; // Kết quả - chỉ khi status = "Đã hoàn thành"
     },
 ): Promise<ApiResponse<{ ok: true }>> {
-    const body: any = { "ticket-id": ticketId, data: payload };
+    // Get current user's staff code giống form tạo
+    const user = getAuthUser() || ({} as any);
+    const assignee = user["staff-code"] || user.staffCode || user.code || "";
+    
+    // Body format giống y như khi tạo ticket
+    const body: any = {
+        "ticket-id": ticketId,
+        name: payload.name || "",
+        type: payload.type || "",
+        description: payload.description || "",
+        "customer-name": payload.customer_name || "",
+        "customer-record-id": payload.customer_record_id || "",
+        deadline: payload.deadline || "",
+        status: payload.status || "Chưa bắt đầu",
+        "complete-date": payload.complete_date || "",
+        note: payload.note || "",
+        result: payload.result || "", // Kết quả - chỉ khi status = "Đã hoàn thành"
+        assignee: assignee,
+    };
+    
     const res = await apiRequest<{ status?: string; message?: string }>({
         method: "POST",
         path: "/webhook/ticket/activity-support-update-info",
@@ -1885,6 +1939,41 @@ export async function updateActivitySupportResult(
     const status = (res.data as any)?.status;
     const isOk = typeof status === "string" ? status.toLowerCase() === "success" : true;
     return isOk ? ({ success: true, status: res.status, data: { ok: true } } as any) : ({ success: false, status: res.status, message: (res.data as any)?.message || "Cập nhật không thành công" } as any);
+}
+
+// Customer type for dropdown
+export interface Customer {
+    "customer-id": string;
+    "customer-name": string;
+    "record-id": string;
+}
+
+// Fetch Customers for dropdown
+export async function fetchCustomers(): Promise<ApiResponse<Customer[]>> {
+    const res = await apiRequest<{ data?: Customer[] } | Array<{ data?: Customer[] }>>({ 
+        method: "GET", 
+        path: "/webhook/get-customer" 
+    });
+    if (!res.success) return res as any;
+    
+    const payload = res.data as any;
+    let customers: Customer[] = [];
+    
+    // Handle different response structures
+    if (Array.isArray(payload)) {
+        const first = payload.find(Boolean);
+        if (first?.data && Array.isArray(first.data)) {
+            customers = first.data;
+        } else if (Array.isArray(first)) {
+            customers = first;
+        }
+    } else if (payload?.data && Array.isArray(payload.data)) {
+        customers = payload.data;
+    } else if (Array.isArray(payload)) {
+        customers = payload;
+    }
+    
+    return { success: true, status: 200, data: customers };
 }
 
 // Fetch Activity Types for dropdown
@@ -1916,11 +2005,13 @@ export interface CreateActivitySupportTicketInput {
     name: string; // Tên hoạt động
     description?: string; // Mô tả
     customer_name: string; // Khách hàng
+    customer_record_id?: string; // Record ID của khách hàng
     type?: string; // Loại hoạt động
     deadline?: string; // Hạn hoàn thành (ISO string)
     status?: string; // Trạng thái: "Chưa bắt đầu" hoặc "Đã hoàn thành"
     complete_date?: string; // Ngày hoàn thành (ISO string) - chỉ khi status = "Đã hoàn thành"
     note?: string; // Ghi chú
+    result?: string; // Kết quả - chỉ khi status = "Đã hoàn thành"
 }
 
 export async function createActivitySupportTicket(input: CreateActivitySupportTicketInput): Promise<ApiResponse<{ id: string }>> {
@@ -1934,10 +2025,12 @@ export async function createActivitySupportTicket(input: CreateActivitySupportTi
         type: input.type || "",
         description: input.description || "",
         "customer-name": input.customer_name,
+        "customer-record-id": input.customer_record_id || "",
         deadline: input.deadline || "",
         status: input.status || "Chưa bắt đầu",
         "complete-date": input.complete_date || "",
         note: input.note || "",
+        result: input.result || "", // Kết quả - chỉ khi status = "Đã hoàn thành"
         assignee: assignee,
         webhookUrl: "http://14.225.205.101:5679/webhook-test/login", // From the image
         executionMode: "test"

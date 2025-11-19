@@ -1,14 +1,21 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchActivityTypes, createActivitySupportTicket, CreateActivitySupportTicketInput } from "@/lib/api";
+import { fetchActivityTypes, fetchCustomers, createActivitySupportTicket, CreateActivitySupportTicketInput, Customer } from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { CustomerCombobox } from "@/components/ui/customer-combobox";
 import { toast } from "sonner";
+
+const STATUS_OPTIONS = ["Chưa bắt đầu", "Đang thực hiện", "Đã hoàn thành"] as const;
+
+const getLocalDateTimeInputValue = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
 
 interface CreateActivityTicketFormProps {
   open: boolean;
@@ -23,14 +30,22 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
     name: "",
     description: "",
     customer_name: "",
+    customer_record_id: "",
     type: "none",
     deadline: "",
     status: "Chưa bắt đầu",
     complete_date: "",
-    note: ""
+    note: "",
+    result: ""
   });
-  
-  const [isCompleted, setIsCompleted] = useState(false);
+  const isCompleted = formData.status === "Đã hoàn thành";
+
+  // Fetch customers
+  const { data: customers, isLoading: isLoadingCustomers } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => (await fetchCustomers()).data || [],
+    enabled: open,
+  });
 
   // Fetch activity types
   const { data: activityTypes, isLoading: isLoadingTypes } = useQuery({
@@ -57,14 +72,31 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
       name: "",
       description: "",
       customer_name: "",
+      customer_record_id: "",
       type: "none",
       deadline: "",
       status: "Chưa bắt đầu",
       complete_date: "",
-      note: ""
+      note: "",
+      result: ""
     });
-    setIsCompleted(false);
     onOpenChange(false);
+  };
+
+  const handleCustomerSelect = (customer: Customer | null) => {
+    if (customer) {
+      setFormData(prev => ({
+        ...prev,
+        customer_name: customer["customer-name"],
+        customer_record_id: customer["record-id"]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        customer_name: "",
+        customer_record_id: ""
+      }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -75,33 +107,45 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
       return;
     }
     
-    if (!formData.customer_name.trim()) {
-      toast.error("Vui lòng nhập tên khách hàng");
+    if (!formData.customer_name.trim() || !formData.customer_record_id) {
+      toast.error("Vui lòng chọn khách hàng");
       return;
+    }
+
+    // Validation khi đã hoàn thành
+    if (isCompleted) {
+      if (!formData.complete_date) {
+        toast.error("Vui lòng nhập ngày hoàn thành");
+        return;
+      }
+      if (!formData.result?.trim()) {
+        toast.error("Vui lòng nhập kết quả hoạt động");
+        return;
+      }
     }
 
     const submitData = {
       ...formData,
       type: formData.type === "none" ? "" : formData.type,
-      status: isCompleted ? "Đã hoàn thành" : "Chưa bắt đầu",
+      status: formData.status,
       complete_date: isCompleted ? formData.complete_date : undefined,
+      result: isCompleted ? formData.result : undefined, // Chỉ gửi result nếu đã hoàn thành
     };
 
     createTicketMutation.mutate(submitData);
   };
 
-  const handleCompletedChange = (checked: boolean) => {
-    setIsCompleted(checked);
-    if (checked) {
-      // Set completion date to current date/time if not set
-      if (!formData.complete_date) {
-        const now = new Date();
-        const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setFormData(prev => ({ ...prev, complete_date: localDateTime }));
-      }
-    }
+  const handleStatusChange = (value: string) => {
+    const nextStatus = value as (typeof STATUS_OPTIONS)[number];
+    setFormData((prev) => {
+      const isStatusCompleted = nextStatus === "Đã hoàn thành";
+      return {
+        ...prev,
+        status: nextStatus,
+        complete_date: isStatusCompleted ? prev.complete_date || getLocalDateTimeInputValue() : "",
+        result: isStatusCompleted ? prev.result : "",
+      };
+    });
   };
 
   return (
@@ -139,13 +183,16 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
           {/* Khách hàng */}
           <div className="space-y-2">
             <Label htmlFor="customer">Khách hàng *</Label>
-            <Input
-              id="customer"
-              value={formData.customer_name}
-              onChange={(e) => setFormData(prev => ({ ...prev, customer_name: e.target.value }))}
-              placeholder="Nhập tên khách hàng"
-              required
-            />
+            {isLoadingCustomers ? (
+              <Input disabled placeholder="Đang tải danh sách khách hàng..." />
+            ) : (
+              <CustomerCombobox
+                customers={customers || []}
+                value={formData.customer_record_id}
+                onSelect={handleCustomerSelect}
+                placeholder="Chọn khách hàng..."
+              />
+            )}
           </div>
 
           {/* Loại hoạt động */}
@@ -186,17 +233,24 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
             />
           </div>
 
-          {/* Checkbox Đã hoàn thành */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="completed"
-              checked={isCompleted}
-              onCheckedChange={handleCompletedChange}
-            />
-            <Label htmlFor="completed">Đã hoàn thành</Label>
+          {/* Trạng thái */}
+          <div className="space-y-2">
+            <Label htmlFor="status">Trạng thái *</Label>
+            <Select value={formData.status} onValueChange={handleStatusChange}>
+              <SelectTrigger id="status">
+                <SelectValue placeholder="Chọn trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Ngày hoàn thành - chỉ hiển thị khi checkbox được check */}
+          {/* Ngày hoàn thành - chỉ hiển thị khi trạng thái là Đã hoàn thành */}
           {isCompleted && (
             <div className="space-y-2">
               <Label htmlFor="complete_date">Ngày hoàn thành</Label>
@@ -205,6 +259,21 @@ const CreateActivityTicketForm: React.FC<CreateActivityTicketFormProps> = ({ ope
                 type="datetime-local"
                 value={formData.complete_date}
                 onChange={(e) => setFormData(prev => ({ ...prev, complete_date: e.target.value }))}
+                required={isCompleted}
+              />
+            </div>
+          )}
+
+          {/* Kết quả - chỉ hiển thị khi trạng thái là Đã hoàn thành */}
+          {isCompleted && (
+            <div className="space-y-2">
+              <Label htmlFor="result">Kết quả *</Label>
+              <Textarea
+                id="result"
+                value={formData.result}
+                onChange={(e) => setFormData(prev => ({ ...prev, result: e.target.value }))}
+                placeholder="Nhập kết quả hoạt động"
+                rows={3}
                 required={isCompleted}
               />
             </div>
