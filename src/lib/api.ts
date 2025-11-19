@@ -249,6 +249,13 @@ export interface TicketDetail extends TicketSummary {
     // Maintenance flow sections (optional)
     firstResponse?: { time?: string; note?: string; imageUrls?: string[] };
     supplierInstruction?: { time?: string; contactTime?: string; responseTime?: string; note?: string; imageUrls?: string[] };
+    supplierInstructionLogs?: Array<{
+        contactCode?: string;
+        contactTime?: string;
+        responseTime?: string;
+        responseContent?: string;
+        note?: string;
+    }>;
     startExecution?: { time?: string; note?: string; imageUrls?: string[] };
     resultRecord?: { time?: string; note?: string; imageUrls?: string[] };
     // Activity & Support specific
@@ -1458,6 +1465,15 @@ export async function fetchMaintenanceTicketDetail(ticketId: string): Promise<Ap
             responseTime: d.supplier_response_time,
             note: d.supplier_response_content,
         },
+        supplierInstructionLogs: Array.isArray(d.supplier_instruction_logs)
+            ? d.supplier_instruction_logs.map((log: any) => ({
+                  contactCode: log?.contactCode || log?.contact_code,
+                  contactTime: log?.contactTime || log?.contact_time,
+                  responseTime: log?.responseTime || log?.response_time,
+                  responseContent: log?.responseContent || log?.response_content,
+                  note: log?.note,
+              }))
+            : undefined,
         startExecution: {
             time: d.start_time,
             note: undefined,

@@ -139,7 +139,8 @@ const MaintenanceDetail = () => {
   const [supplierNote, setSupplierNote] = useState("");
   const [resultNote, setResultNote] = useState("");
 
-  const firstInputRef = useRef<HTMLInputElement | null>(null);
+  const firstCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const firstFileInputRef = useRef<HTMLInputElement | null>(null);
   const startInputRef = useRef<HTMLInputElement | null>(null);
   const resultInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -372,6 +373,16 @@ const MaintenanceDetail = () => {
     if (t.success && t.data) setTypeOptions(t.data);
     if (c.success && c.data) setCategoryOptions(c.data);
   };
+
+  // Supplier instruction logs (many records support)
+  const supplierInstructionLogsRaw =
+    ((data as any)?.supplierInstructionLogs ??
+      (data as any)?.supplier_instruction_logs ??
+      (data as any)?.supplierInstruction?.logs ??
+      []) as unknown;
+  const supplierInstructionLogs: Array<Record<string, any>> = Array.isArray(supplierInstructionLogsRaw)
+    ? (supplierInstructionLogsRaw as Array<Record<string, any>>)
+    : [];
 
   // Selection state for goods when completing ticket
   const [selectedGoodsIds, setSelectedGoodsIds] = useState<string[]>([]);
@@ -628,17 +639,62 @@ const MaintenanceDetail = () => {
               )}
             </Section>
 
-            <Section title="Supplier Instruction" rightSlot={<button onClick={openSupplierInstruction} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><PencilLine className="h-4 w-4" />Cập nhật</button>}>
-              {data.supplierInstruction?.contactTime != "undefined" || data.supplierInstruction?.responseTime != "undefined" || data.supplierInstruction?.note != "undefined" ? (
-                <div className="text-sm space-y-1">
-                  {data.supplierInstruction?.contactTime && <div><span className="text-muted-foreground">Thời gian liên hệ:</span> {formatDateTime(data.supplierInstruction.contactTime)}</div>}
-                  {data.supplierInstruction?.responseTime && <div><span className="text-muted-foreground">Thời gian phản hồi:</span> {formatDateTime(data.supplierInstruction.responseTime)}</div>}
-                  {data.supplierInstruction?.note && <div><span className="text-muted-foreground">Nội dung:</span> {data.supplierInstruction.note}</div>}
+            <Section
+              title="Supplier Instruction"
+              rightSlot={
+                <button
+                  onClick={openSupplierInstruction}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium"
+                >
+                  + Ghi nhận
+                </button>
+              }
+            >
+              {supplierInstructionLogs.length > 0 ? (
+                <div className="space-y-3">
+                  {supplierInstructionLogs.map((log, idx) => {
+                    const contactTime = isNonEmpty(log?.contactTime || log?.contact_time) ? formatDateTime(log?.contactTime || log?.contact_time) : "";
+                    const responseTime = isNonEmpty(log?.responseTime || log?.response_time) ? formatDateTime(log?.responseTime || log?.response_time) : "";
+                    const responseContent = isNonEmpty(log?.responseContent || log?.response_content) ? (log?.responseContent || log?.response_content) : "";
+                    const hasDetails = Boolean(contactTime || responseTime || responseContent);
+                    return (
+                      <div key={log?.contactCode || log?.contact_code || idx} className="relative rounded-lg border border-border/70 p-3 pl-5 bg-muted/30">
+                        <span className="absolute left-2 top-4 h-2 w-2 rounded-full bg-primary"></span>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lần {idx + 1}</div>
+                          {/* {(log?.contactCode || log?.contact_code) && (
+                            <Badge variant="secondary" className="text-[11px]">
+                              {log?.contactCode || log?.contact_code}
+                            </Badge>
+                          )} */}
+                        </div>
+                        {hasDetails ? (
+                          <div className="text-sm space-y-1.5">
+                            {contactTime && (
+                              <div>
+                                <span className="text-muted-foreground">Liên hệ lúc:</span> {contactTime}
+                              </div>
+                            )}
+                            {responseTime && (
+                              <div>
+                                <span className="text-muted-foreground">Phản hồi lúc:</span> {responseTime}
+                              </div>
+                            )}
+                            {responseContent && (
+                              <div>
+                                <span className="text-muted-foreground">Nội dung:</span> {responseContent}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-muted-foreground italic">Chưa có thông tin chi tiết</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="flex items-center">
-                  <Button variant="outline" size="sm" onClick={() => setOpenSupplier(true)} className="w-full">Ghi nhận</Button>
-                </div>
+                <div className="text-sm text-muted-foreground italic">Chưa ghi nhận</div>
               )}
             </Section>
 
@@ -714,26 +770,42 @@ const MaintenanceDetail = () => {
             </div>
             {/* Capture images */}
             <div>
-              <input 
-                ref={firstInputRef} 
-                id="first-images" 
-                type="file" 
-                accept="image/*" 
-                capture="environment" 
-                multiple 
+              <input
+                ref={firstCameraInputRef}
+                id="first-images-camera"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
                 onChange={(e) => {
                   const files = e.target.files ? Array.from(e.target.files) : [];
                   setFirstImages(files);
-                }} 
-                className="hidden" 
+                }}
+                className="hidden"
               />
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => firstInputRef.current?.click()}>
+              <input
+                ref={firstFileInputRef}
+                id="first-images-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = e.target.files ? Array.from(e.target.files) : [];
+                  setFirstImages(files);
+                }}
+                className="hidden"
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => firstCameraInputRef.current?.click()}>
                   <Camera className="mr-2" /> Chụp ảnh
+                </Button>
+                <Button size="sm" onClick={() => firstFileInputRef.current?.click()}>
+                  Tải ảnh lên
                 </Button>
                 {firstImages.length > 0 && (
                   <>
-                    <Button variant="ghost" size="sm" onClick={() => { setFirstImages([]); firstInputRef.current?.click(); }}>Chụp lại</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setFirstImages([]); firstCameraInputRef.current?.click(); }}>Chụp lại</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setFirstImages([]); firstFileInputRef.current?.click(); }}>Chọn ảnh khác</Button>
                     <span className="text-sm text-muted-foreground">{firstImages.length} ảnh đã chọn</span>
                   </>
                 )}
