@@ -938,21 +938,6 @@ export async function createActivityTicket(input: CreateActivityTicketInput): Pr
     return apiRequest<{ id: string }>({ method: "POST", path: "/api/activities", body: input, withAuth: true });
 }
 
-// Emergency maintenance ticket (quick create)
-export interface CreateEmergencyMaintenanceInput {
-    customer: string;
-    contactName?: string;
-    contactEmail?: string;
-    organization?: string;
-    deviceSerial?: string;
-    deviceModel?: string;
-    issue?: string;
-    serviceType?: string; // maintenance/repair
-    requestedAt?: string; // now
-    expectedCompleteAt?: string;
-}
-
-
 // ---------------------- Delivery & Installation (n8n) ----------------------
 type ExternalDeliveryItem = {
     "ticket_id": string;
@@ -1945,6 +1930,9 @@ export async function updateActivitySupportResult(
 export interface Customer {
     "customer-id": string;
     "customer-name": string;
+    "contact-name"?: string;
+    "email"?: string;
+    "phone"?: string;
     "record-id": string;
 }
 
@@ -1952,7 +1940,7 @@ export interface Customer {
 export async function fetchCustomers(): Promise<ApiResponse<Customer[]>> {
     const res = await apiRequest<{ data?: Customer[] } | Array<{ data?: Customer[] }>>({ 
         method: "GET", 
-        path: "/webhook/get-customer" 
+        path: "/webhook/get-customer-list" 
     });
     if (!res.success) return res as any;
     
@@ -1960,6 +1948,7 @@ export async function fetchCustomers(): Promise<ApiResponse<Customer[]>> {
     let customers: Customer[] = [];
     
     // Handle different response structures
+    // Response format: { data: [{ "customer-id": "...", "customer-name": "...", ... }] }
     if (Array.isArray(payload)) {
         const first = payload.find(Boolean);
         if (first?.data && Array.isArray(first.data)) {
@@ -1974,6 +1963,73 @@ export async function fetchCustomers(): Promise<ApiResponse<Customer[]>> {
     }
     
     return { success: true, status: 200, data: customers };
+}
+
+// Device type for dropdown
+export interface Device {
+    "serial-number": string;
+    "brand": string;
+    "model": string;
+    "install-date"?: string;
+    "record-id": string;
+}
+
+// Fetch Devices for dropdown
+export async function fetchDevices(): Promise<ApiResponse<Device[]>> {
+    const res = await apiRequest<{ data?: Device[] } | Array<{ data?: Device[] }>>({ 
+        method: "GET", 
+        path: "/webhook/get-devices-list" 
+    });
+    if (!res.success) return res as any;
+    
+    const payload = res.data as any;
+    let devices: Device[] = [];
+    
+    // Handle different response structures
+    // Response format: { data: [{ "serial-number": "...", "brand": "...", ... }] }
+    if (Array.isArray(payload)) {
+        const first = payload.find(Boolean);
+        if (first?.data && Array.isArray(first.data)) {
+            devices = first.data;
+        } else if (Array.isArray(first)) {
+            devices = first;
+        }
+    } else if (payload?.data && Array.isArray(payload.data)) {
+        devices = payload.data;
+    } else if (Array.isArray(payload)) {
+        devices = payload;
+    }
+    
+    return { success: true, status: 200, data: devices };
+}
+
+// Fetch Brands for dropdown
+export async function fetchBrands(): Promise<ApiResponse<string[]>> {
+    const res = await apiRequest<{ data?: Array<{ "options-name": string }> } | Array<{ data?: Array<{ "options-name": string }> }>>({ 
+        method: "GET", 
+        path: "/webhook/get-brands-list" 
+    });
+    if (!res.success) return res as any;
+    
+    const payload = res.data as any;
+    let brands: string[] = [];
+    
+    // Handle different response structures
+    // Response format: [{ data: [{ "options-name": "..." }, ...] }]
+    if (Array.isArray(payload)) {
+        const first = payload.find(Boolean);
+        if (first?.data && Array.isArray(first.data)) {
+            brands = first.data.map((item: { "options-name": string }) => item["options-name"]).filter(Boolean);
+        } else if (Array.isArray(first)) {
+            brands = first.map((item: { "options-name": string }) => item["options-name"]).filter(Boolean);
+        }
+    } else if (payload?.data && Array.isArray(payload.data)) {
+        brands = payload.data.map((item: { "options-name": string }) => item["options-name"]).filter(Boolean);
+    } else if (Array.isArray(payload)) {
+        brands = payload.map((item: { "options-name": string }) => item["options-name"]).filter(Boolean);
+    }
+    
+    return { success: true, status: 200, data: brands };
 }
 
 // Fetch Activity Types for dropdown
@@ -2216,6 +2272,7 @@ export interface CreateEmergencyMaintenanceInput {
     complete_time?: string; // Hoàn thành lúc (ISO string)
     brand?: string; // Hãng thiết bị (từ device info)
     model?: string; // Model thiết bị (từ device info)
+    install_date?: string; // Ngày lắp đặt thiết bị
 }
 
 export async function createEmergencyMaintenanceTicket(input: CreateEmergencyMaintenanceInput): Promise<ApiResponse<{ id: string }>> {
@@ -2232,6 +2289,8 @@ export async function createEmergencyMaintenanceTicket(input: CreateEmergencyMai
         serial: input.serial,
         brand: input.brand || "",
         model: input.model || "",
+        issue: input.issue || "",
+        "install-date": input.install_date || "",
         "service-type": input.service_type || "",
         category: input.category || "",
         stutus: input.status || "Đã hoàn thành", // Note: API has typo "stutus" instead of "status"

@@ -15,39 +15,40 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Customer } from "@/lib/api";
+import { Device } from "@/lib/api";
 
-interface CustomerComboboxProps {
-  customers: Customer[];
+interface DeviceComboboxProps {
+  devices: Device[];
   value?: string; // record-id
-  onSelect?: (customer: Customer | null) => void;
+  onSelect?: (device: Device | null) => void;
   placeholder?: string;
   disabled?: boolean;
 }
 
-export function CustomerCombobox({
-  customers,
+export function DeviceCombobox({
+  devices,
   value,
   onSelect,
-  placeholder = "Chọn khách hàng...",
+  placeholder = "Chọn thiết bị...",
   disabled = false,
-}: CustomerComboboxProps) {
+}: DeviceComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const selectedCustomer = React.useMemo(() => {
-    return customers.find((c) => c["record-id"] === value) || null;
-  }, [customers, value]);
+  const selectedDevice = React.useMemo(() => {
+    return devices.find((d) => d["record-id"] === value) || null;
+  }, [devices, value]);
 
-  const filteredCustomers = React.useMemo(() => {
-    if (!search.trim()) return customers;
+  const filteredDevices = React.useMemo(() => {
+    if (!search.trim()) return devices;
     const searchLower = search.toLowerCase();
-    return customers.filter(
-      (customer) =>
-        customer["customer-name"].toLowerCase().includes(searchLower) ||
-        customer["customer-id"].toLowerCase().includes(searchLower)
+    return devices.filter(
+      (device) =>
+        device["serial-number"].toLowerCase().includes(searchLower) ||
+        device.brand.toLowerCase().includes(searchLower) ||
+        device.model.toLowerCase().includes(searchLower)
     );
-  }, [customers, search]);
+  }, [devices, search]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,20 +57,20 @@ export function CustomerCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between text-left"
           disabled={disabled}
         >
-          {selectedCustomer ? (
-            <div className="flex flex-col items-start flex-1 min-w-0 text-left">
-              <span className="truncate w-full text-left">
-                {selectedCustomer["customer-name"]}
+          {selectedDevice ? (
+            <div className="flex flex-col items-start flex-1 min-w-0">
+              <span className="truncate">
+                {selectedDevice.brand} - {selectedDevice.model}
               </span>
-              <span className="text-xs text-muted-foreground truncate w-full text-left">
-                {selectedCustomer["customer-id"]}
+              <span className="text-xs text-muted-foreground truncate w-full">
+                {selectedDevice["serial-number"]}
               </span>
             </div>
           ) : (
-            <span className="text-muted-foreground text-left">{placeholder}</span>
+            <span className="text-muted-foreground">{placeholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -77,20 +78,20 @@ export function CustomerCombobox({
       <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput
-            placeholder="Tìm theo tên hoặc ID khách hàng..."
+            placeholder="Tìm theo serial, hãng hoặc model..."
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty>Không tìm thấy khách hàng.</CommandEmpty>
+            <CommandEmpty>Không tìm thấy thiết bị.</CommandEmpty>
             <CommandGroup>
-              {filteredCustomers.map((customer) => (
+              {filteredDevices.map((device) => (
                 <CommandItem
-                  key={customer["record-id"]}
-                  value={customer["record-id"]}
+                  key={device["record-id"]}
+                  value={device["record-id"]}
                   onSelect={() => {
-                    const isSelected = value === customer["record-id"];
-                    onSelect?.(isSelected ? null : customer);
+                    const isSelected = value === device["record-id"];
+                    onSelect?.(isSelected ? null : device);
                     setOpen(false);
                     setSearch("");
                   }}
@@ -98,15 +99,17 @@ export function CustomerCombobox({
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      value === customer["record-id"]
+                      value === device["record-id"]
                         ? "opacity-100"
                         : "opacity-0"
                     )}
                   />
                   <div className="flex flex-col">
-                    <span>{customer["customer-name"]}</span>
+                    <span>
+                      {device.brand} - {device.model}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      {customer["customer-id"]}
+                      {device["serial-number"]}
                     </span>
                   </div>
                 </CommandItem>
